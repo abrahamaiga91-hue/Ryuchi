@@ -1,11 +1,18 @@
 import { useState } from 'react';
-import { Check, Copy, Download } from 'lucide-react';
+import { Archive, Check, Copy, Download } from 'lucide-react';
 import { ANDROID_PROJECT_FILES } from '../data/androidComposeProject';
 import { AndroidFileId } from '../types/music';
+import { buildAndroidProjectZipBlob } from '../utils/zipExport';
 
 const FILE_ORDER: AndroidFileId[] = [
+  '.github/workflows/android-build.yml',
+  'settings.gradle.kts',
+  'build.gradle.kts',
+  'gradle/libs.versions.toml',
+  'gradle.properties',
   'app/build.gradle.kts',
   'AndroidManifest.xml',
+  'res/values/themes.xml',
   'model/Song.kt',
   'MainActivity.kt',
   'service/PlaybackService.kt',
@@ -26,7 +33,7 @@ const FILE_ORDER: AndroidFileId[] = [
 
 export function AndroidSourceView() {
   const [selectedFile, setSelectedFile] = useState<AndroidFileId>(
-    'audio/AudioEffectsController.kt',
+    '.github/workflows/android-build.yml',
   );
   const [copied, setCopied] = useState(false);
 
@@ -56,15 +63,38 @@ export function AndroidSourceView() {
     URL.revokeObjectURL(url);
   };
 
+  const handleDownloadRepoZip = () => {
+    const blob = buildAndroidProjectZipBlob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'music-player-android-github.zip';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <section aria-label="Android Jetpack Compose source code" className="py-8 space-y-6">
-      <div className="border-b border-slate-200 pb-5">
-        <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900">
-          Jetpack Compose Project Source
-        </h1>
-        <p className="mt-1 text-sm text-slate-600">
-          com.yourapp.musicplayer · Media3 1.11.1 · JAudioTagger 3.0.1 · Coil Compose 2.7.0
-        </p>
+      <div className="border-b border-slate-200 pb-5 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900">
+            Jetpack Compose Project Source
+          </h1>
+          <p className="mt-1 text-sm text-slate-600">
+            com.yourapp.musicplayer · Media3 1.11.1 · JAudioTagger 3.0.1 · GitHub Actions Android CI
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleDownloadRepoZip}
+          className="inline-flex items-center gap-2 min-h-[42px] px-4 py-2 rounded-lg bg-slate-900 text-white text-xs font-medium hover:bg-slate-800 transition-colors cursor-pointer whitespace-nowrap"
+        >
+          <Archive className="w-4 h-4" aria-hidden="true" />
+          <span>Download Repo (.zip)</span>
+        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">

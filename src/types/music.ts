@@ -11,8 +11,14 @@ export type EqPresetId =
 export type MainTab = 'player' | 'tags' | 'equalizer' | 'source';
 
 export type AndroidFileId =
+  | '.github/workflows/android-build.yml'
+  | 'settings.gradle.kts'
+  | 'build.gradle.kts'
+  | 'gradle/libs.versions.toml'
+  | 'gradle.properties'
   | 'app/build.gradle.kts'
   | 'AndroidManifest.xml'
+  | 'res/values/themes.xml'
   | 'model/Song.kt'
   | 'MainActivity.kt'
   | 'service/PlaybackService.kt'
