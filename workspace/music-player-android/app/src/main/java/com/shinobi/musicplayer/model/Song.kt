@@ -1,4 +1,4 @@
-package com.yourapp.musicplayer.model
+package com.shinobi.musicplayer.model
 
 import android.net.Uri
 

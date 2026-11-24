@@ -1,4 +1,4 @@
-package com.yourapp.musicplayer.util
+package com.shinobi.musicplayer.util
 
 import java.util.Locale
 

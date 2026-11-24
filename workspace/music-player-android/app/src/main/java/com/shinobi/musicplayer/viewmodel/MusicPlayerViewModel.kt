@@ -1,12 +1,12 @@
-package com.yourapp.musicplayer.viewmodel
+package com.shinobi.musicplayer.viewmodel
 
 import android.app.Application
 import android.content.IntentSender
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.yourapp.musicplayer.data.AudioRepository
-import com.yourapp.musicplayer.data.TagEditorRepository
-import com.yourapp.musicplayer.model.Song
+import com.shinobi.musicplayer.data.AudioRepository
+import com.shinobi.musicplayer.data.TagEditorRepository
+import com.shinobi.musicplayer.model.Song
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -66,7 +66,7 @@ class MusicPlayerViewModel(application: Application) : AndroidViewModel(applicat
                 newAlbum = newAlbum,
                 newYear = newYear,
                 newGenre = newGenre,
-                albumArtBytes = selectedImageByteArray // Optional
+                albumArtBytes = selectedImageByteArray
             )
 
             result.onSuccess {

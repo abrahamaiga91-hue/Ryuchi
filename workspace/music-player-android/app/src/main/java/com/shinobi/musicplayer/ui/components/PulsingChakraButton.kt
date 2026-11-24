@@ -1,4 +1,4 @@
-package com.yourapp.musicplayer.ui.components
+package com.shinobi.musicplayer.ui.components
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -25,7 +25,6 @@ fun PulsingChakraButton(
     chakraColor: Color,
     onClick: () -> Unit
 ) {
-    // Animation de pulsation active uniquement lorsque la musique joue
     val infiniteTransition = rememberInfiniteTransition(label = "chakra_pulse")
 
     val pulseScale by infiniteTransition.animateFloat(
@@ -52,7 +51,6 @@ fun PulsingChakraButton(
         contentAlignment = Alignment.Center,
         modifier = Modifier.size(96.dp)
     ) {
-        // Aura pulsée en arrière-plan
         if (isPlaying) {
             Box(
                 modifier = Modifier
@@ -62,7 +60,6 @@ fun PulsingChakraButton(
             )
         }
 
-        // Bouton principal d'invocation
         FilledIconButton(
             onClick = onClick,
             modifier = Modifier.size(64.dp),

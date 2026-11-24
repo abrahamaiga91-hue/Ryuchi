@@ -1,10 +1,10 @@
-package com.yourapp.musicplayer.data
+package com.shinobi.musicplayer.data
 
 import android.content.ContentUris
 import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.provider.MediaStore
-import com.yourapp.musicplayer.model.Song
+import com.shinobi.musicplayer.model.Song
 import java.io.File
 
 class AudioRepository(private val context: Context) {
@@ -20,13 +20,11 @@ class AudioRepository(private val context: Context) {
             MediaStore.Audio.Media.ALBUM,
             MediaStore.Audio.Media.DURATION,
             MediaStore.Audio.Media.SIZE,
-            MediaStore.Audio.Media.DATA, // File path (still useful for metadata retriever)
+            MediaStore.Audio.Media.DATA,
             MediaStore.Audio.Media.MIME_TYPE,
-            MediaStore.Audio.Media.YEAR,
-            MediaStore.Audio.Media.GENRE
+            MediaStore.Audio.Media.YEAR
         )
 
-        // Filter out very short audio files (like notifications or ringtones under 30 seconds)
         val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0 AND ${MediaStore.Audio.Media.DURATION} >= 30000"
         val sortOrder = "${MediaStore.Audio.Media.TITLE} ASC"
 
@@ -59,8 +57,6 @@ class AudioRepository(private val context: Context) {
                 val year = cursor.getString(yearColumn) ?: ""
 
                 val contentUri = ContentUris.withAppendedId(collection, id)
-
-                // Extract technical audio specs using MediaMetadataRetriever
                 val (bitrate, sampleRate) = extractTechnicalMetadata(filePath)
 
                 songs.add(
@@ -70,7 +66,7 @@ class AudioRepository(private val context: Context) {
                         title = title,
                         artist = artist,
                         album = album,
-                        genre = "Unknown", // MediaStore genre queries require a separate join table; populated via JAudioTagger later if needed
+                        genre = "Unknown",
                         year = year,
                         durationMs = duration,
                         filePath = filePath,
@@ -94,7 +90,6 @@ class AudioRepository(private val context: Context) {
             if (File(filePath).exists()) {
                 retriever.setDataSource(filePath)
 
-                // Extract Bitrate (bits per second -> convert to kbps)
                 val bitrateStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE)
                 val bitrateKbps = if (!bitrateStr.isNullOrEmpty()) {
                     val kbps = bitrateStr.toIntOrNull()?.div(1000)
@@ -103,9 +98,7 @@ class AudioRepository(private val context: Context) {
                     "Unknown"
                 }
 
-                // Extract Sample Rate (Hz -> convert to kHz if applicable)
-                // Note: METADATA_KEY_SAMPLERATE is supported on API 29+
-                val sampleRateHz = retriever.extractMetadata(19 /* METADATA_KEY_SAMPLERATE */)
+                val sampleRateHz = retriever.extractMetadata(19)
                 val sampleRateFormatted = if (!sampleRateHz.isNullOrEmpty()) {
                     val hz = sampleRateHz.toIntOrNull()
                     if (hz != null) {

@@ -17,7 +17,7 @@ function resolveRepoPath(fileId: AndroidFileId): string {
     case 'res/values/themes.xml':
       return 'app/src/main/res/values/themes.xml';
     default:
-      return `app/src/main/java/com/yourapp/musicplayer/${fileId}`;
+      return `app/src/main/java/com/shinobi/musicplayer/${fileId}`;
   }
 }
 

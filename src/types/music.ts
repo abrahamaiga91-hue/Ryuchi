@@ -30,13 +30,11 @@ export type AndroidFileId =
   | 'data/TagEditorRepository.kt'
   | 'viewmodel/MusicPlayerViewModel.kt'
   | 'util/SongFormatUtils.kt'
-  | 'ui/NowPlayingScreen.kt'
-  | 'ui/NinjaMusicPlayerRoot.kt'
+  | 'ui/ShinobiAppRoot.kt'
   | 'ui/components/PulsingChakraButton.kt'
   | 'ui/components/SealEqualizerNode.kt'
   | 'ui/components/SpatialEqualizerBottomSheet.kt'
-  | 'ui/components/ParchmentTagEditorScreen.kt'
-  | 'ui/TagEditorSheet.kt';
+  | 'ui/components/ParchmentTagEditorScreen.kt';
 
 export interface SynthVoiceConfig {
   rootHz: number;

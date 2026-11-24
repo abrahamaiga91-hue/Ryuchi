@@ -1,4 +1,4 @@
-package com.yourapp.musicplayer.ui
+package com.shinobi.musicplayer.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -12,25 +12,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import com.yourapp.musicplayer.audio.EqualizerBand
-import com.yourapp.musicplayer.audio.EqualizerUiState
-import com.yourapp.musicplayer.model.Song
-import com.yourapp.musicplayer.ui.components.ParchmentTagEditorScreen
-import com.yourapp.musicplayer.ui.components.PulsingChakraButton
-import com.yourapp.musicplayer.ui.components.SpatialEqualizerBottomSheet
-import com.yourapp.musicplayer.util.SongFormatUtils
+import com.shinobi.musicplayer.audio.EqualizerBand
+import com.shinobi.musicplayer.audio.EqualizerUiState
+import com.shinobi.musicplayer.model.Song
+import com.shinobi.musicplayer.ui.components.ParchmentTagEditorScreen
+import com.shinobi.musicplayer.ui.components.PulsingChakraButton
+import com.shinobi.musicplayer.ui.components.SpatialEqualizerBottomSheet
+import com.shinobi.musicplayer.util.SongFormatUtils
 
-// --- Thème Ninja / Sceau (Chakra d'encre & fond ténébreux) ---
-private val ChakraAccent = Color(0xFFFF5722) // Lueur orangée / Feu ardent
+private val ChakraOrange = Color(0xFFFF5722)
 private val SealSurface = Color(0xFF1E222B)
 
 @Composable
-fun NinjaMusicPlayerRoot(
+fun ShinobiAppRoot(
     song: Song? = null,
     isPlaying: Boolean = false,
-    currentPositionMs: Long = 34000L,
+    currentPositionMs: Long = 45000L,
     eqState: EqualizerUiState? = null,
     onPlayPauseClick: (() -> Unit)? = null,
     onNextClick: (() -> Unit)? = null,
@@ -42,47 +43,46 @@ fun NinjaMusicPlayerRoot(
     onBassChanged: ((Short) -> Unit)? = null,
     onSaveTags: ((Song, String, String, String, String, String, () -> Unit) -> Unit)? = null
 ) {
-    // États locaux de repli pour l'aperçu unifié autonome
     var previewPlaying by remember { mutableStateOf(isPlaying) }
     var previewPositionMs by remember { mutableStateOf(currentPositionMs) }
-    var previewSpatialStrength by remember { mutableStateOf<Short>(650) }
-    var previewExtendedBass by remember { mutableStateOf<Short>(1100) }
+    var previewSpatialStrength by remember { mutableStateOf<Short>(750) }
+    var previewExtendedBass by remember { mutableStateOf<Short>(1200) }
+    var previewEnabled by remember { mutableStateOf(true) }
 
-    // État des feuilles modales (Sceaux et Parchemins)
-    var showEqualizerSheet by remember { mutableStateOf(false) }
-    var showTagEditorScroll by remember { mutableStateOf(false) }
-    var showSongInfoDialog by remember { mutableStateOf(false) }
+    var showEqSheet by remember { mutableStateOf(false) }
+    var showTagEditor by remember { mutableStateOf(false) }
+    var showInfoDialog by remember { mutableStateOf(false) }
 
-    // Chanson active (réelle ou exemple Ninja/Sceau)
     val currentSong = song ?: Song(
         id = 1L,
         uri = android.net.Uri.EMPTY,
-        title = "Chant des Cinq Éléments",
-        artist = "Maître du Fuinjutsu",
-        album = "Matrice Sonore Vol. 1",
-        genre = "Ninjutsu Ambiant",
+        title = "Chant du Katana Céleste",
+        artist = "Shinobi Sonore",
+        album = "Parchemins Interdits Vol. 1",
+        genre = "Ambient Ninjutsu",
         year = "2026",
         durationMs = 210000L,
-        filePath = "/storage/emulated/0/Music/elemental_chant.mp3",
-        fileSizeBytes = 8400000L,
+        filePath = "/storage/emulated/0/Music/shinobi.mp3",
+        fileSizeBytes = 7500000L,
         mimeType = "audio/mpeg",
         bitrate = "320 kbps",
         sampleRate = "44.1 kHz"
     )
 
-    // État de l'égaliseur circulaire
     val activeEqState = if (eqState != null && eqState.bands.isNotEmpty()) {
         eqState
     } else {
         EqualizerUiState(
-            isEnabled = true,
+            isEnabled = previewEnabled,
             bands = listOf(
-                EqualizerBand(0, 60, "60Hz", 200),
-                EqualizerBand(1, 230, "230Hz", -150),
-                EqualizerBand(2, 910, "910Hz", 400),
-                EqualizerBand(3, 3600, "3.6kHz", 100),
-                EqualizerBand(4, 14000, "14kHz", 300)
-            )
+                EqualizerBand(0, 60, "60Hz", 300),
+                EqualizerBand(1, 230, "230Hz", -100),
+                EqualizerBand(2, 910, "910Hz", 200),
+                EqualizerBand(3, 3600, "3.6kHz", 150),
+                EqualizerBand(4, 14000, "14kHz", 400)
+            ),
+            bassBoostStrength = previewExtendedBass,
+            spatialAudioStrength = previewSpatialStrength
         )
     }
 
@@ -90,7 +90,6 @@ fun NinjaMusicPlayerRoot(
     val effectivePositionMs = if (onSeek != null) currentPositionMs else previewPositionMs
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // --- ÉCRAN PRINCIPAL : Le Noyau d'Invocation ---
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -98,28 +97,31 @@ fun NinjaMusicPlayerRoot(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Barre supérieure des Sceaux de Contrôle
+            // Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "✧ MATRICE AUDIO ✧",
+                    text = "SHINOBI MUSIC PLAYER",
                     style = MaterialTheme.typography.titleMedium,
-                    color = ChakraAccent
+                    color = ChakraOrange
                 )
                 Row {
-                    IconButton(onClick = { showSongInfoDialog = true }) {
+                    IconButton(onClick = { showInfoDialog = true }) {
                         Icon(Icons.Default.Info, contentDescription = "Infos", tint = Color.White)
                     }
-                    IconButton(onClick = { showEqualizerSheet = true }) {
-                        Icon(Icons.Default.Equalizer, contentDescription = "Sceau d'Égalisation", tint = ChakraAccent)
+                    IconButton(onClick = { showTagEditor = true }) {
+                        Icon(Icons.Default.Edit, contentDescription = "Éditeur Makimono", tint = Color.White)
+                    }
+                    IconButton(onClick = { showEqSheet = true }) {
+                        Icon(Icons.Default.Equalizer, contentDescription = "Égaliseur", tint = ChakraOrange)
                     }
                 }
             }
 
-            // Disque d'Invocation Central (Effet de Résonance)
+            // Sceau d'invocation central
             Box(
                 modifier = Modifier
                     .size(260.dp)
@@ -129,45 +131,41 @@ fun NinjaMusicPlayerRoot(
             ) {
                 AsyncImage(
                     model = currentSong.uri,
-                    contentDescription = "Sceau de l'album",
+                    contentDescription = "Pochette d'album",
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(16.dp)
                         .clip(CircleShape),
                     contentScale = ContentScale.Crop
                 )
-                // Anneau d'énergie central si non chargé
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Album,
-                        contentDescription = null,
-                        modifier = Modifier.size(80.dp),
-                        tint = ChakraAccent.copy(alpha = 0.6f)
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Default.Album,
+                    contentDescription = null,
+                    modifier = Modifier.size(100.dp),
+                    tint = ChakraOrange.copy(alpha = 0.5f)
+                )
             }
 
-            // Titre et Artiste (Inscriptions)
+            // Infos du morceau
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = currentSong.title,
                     style = MaterialTheme.typography.titleLarge,
-                    color = Color.White
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = currentSong.artist,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray
+                    color = Color.Gray,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
 
-            // Ligne de Flux Temporel (Seekbar)
+            // Barre de progression
             val safeDuration = currentSong.durationMs.coerceAtLeast(1L).toFloat()
             Column(modifier = Modifier.fillMaxWidth()) {
                 Slider(
@@ -181,8 +179,8 @@ fun NinjaMusicPlayerRoot(
                     },
                     valueRange = 0f..safeDuration,
                     colors = SliderDefaults.colors(
-                        thumbColor = ChakraAccent,
-                        activeTrackColor = ChakraAccent
+                        thumbColor = ChakraOrange,
+                        activeTrackColor = ChakraOrange
                     )
                 )
                 Row(
@@ -190,19 +188,19 @@ fun NinjaMusicPlayerRoot(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        SongFormatUtils.formatDuration(effectivePositionMs),
+                        text = SongFormatUtils.formatDuration(effectivePositionMs),
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.Gray
                     )
                     Text(
-                        SongFormatUtils.formatDuration(currentSong.durationMs),
+                        text = SongFormatUtils.formatDuration(currentSong.durationMs),
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.Gray
                     )
                 }
             }
 
-            // Commandes de Flux (Canalisation)
+            // Commandes de lecture & Bouton Chakra Pulsé
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
@@ -213,7 +211,7 @@ fun NinjaMusicPlayerRoot(
                 }
                 PulsingChakraButton(
                     isPlaying = effectivePlaying,
-                    chakraColor = ChakraAccent,
+                    chakraColor = ChakraOrange,
                     onClick = {
                         if (onPlayPauseClick != null) {
                             onPlayPauseClick()
@@ -230,13 +228,16 @@ fun NinjaMusicPlayerRoot(
             Spacer(modifier = Modifier.height(8.dp))
         }
 
-        // --- SECTION MODALE 1 : Le Sceau Circulaire & Spatial 3D HD (Égaliseur) ---
-        if (showEqualizerSheet) {
+        // Sceau d'égalisation circulaire 3D HD (Bottom Sheet)
+        if (showEqSheet) {
             SpatialEqualizerBottomSheet(
                 eqState = activeEqState,
                 spatialAudioStrength = if (eqState != null) eqState.spatialAudioStrength else previewSpatialStrength,
                 extendedBassStrength = if (eqState != null) eqState.bassBoostStrength else previewExtendedBass,
-                onToggleEnabled = { enabled -> onToggleEqualizer?.invoke(enabled) },
+                onToggleEnabled = { enabled ->
+                    previewEnabled = enabled
+                    onToggleEqualizer?.invoke(enabled)
+                },
                 onBandLevelChanged = { index, level -> onBandLevelChanged?.invoke(index, level) },
                 onSpatialChanged = { nextSpatial ->
                     previewSpatialStrength = nextSpatial
@@ -246,40 +247,101 @@ fun NinjaMusicPlayerRoot(
                     previewExtendedBass = nextBass
                     onBassChanged?.invoke(nextBass)
                 },
-                onDismiss = { showEqualizerSheet = false }
+                onDismiss = { showEqSheet = false }
             )
         }
 
-        // --- SECTION MODALE 2 : Le Rouleau de Parchemin (Éditeur de Balises) ---
+        // Parchemin Makimono (Éditeur de balises)
         ParchmentTagEditorScreen(
             initialTitle = currentSong.title,
             initialArtist = currentSong.artist,
             initialAlbum = currentSong.album,
             initialYear = currentSong.year,
             initialGenre = currentSong.genre,
-            isVisible = showTagEditorScroll,
+            isVisible = showTagEditor,
             onSave = { newTitle, newArtist, newAlbum, newYear, newGenre ->
                 if (onSaveTags != null) {
                     onSaveTags(currentSong, newTitle, newArtist, newAlbum, newYear, newGenre) {
-                        showTagEditorScroll = false
+                        showTagEditor = false
                     }
                 } else {
-                    showTagEditorScroll = false
+                    showTagEditor = false
                 }
             },
-            onDismiss = { showTagEditorScroll = false }
+            onDismiss = { showTagEditor = false }
         )
 
-        // --- SECTION MODALE 3 : Boîte d'Informations Techniques ---
-        if (showSongInfoDialog) {
+        // Boîte d'informations techniques
+        if (showInfoDialog) {
             SongInfoDialog(
                 song = currentSong,
-                onDismiss = { showSongInfoDialog = false },
+                onDismiss = { showInfoDialog = false },
                 onOpenTagEditor = {
-                    showSongInfoDialog = false
-                    showTagEditorScroll = true
+                    showInfoDialog = false
+                    showTagEditor = true
                 }
             )
         }
+    }
+}
+
+@Composable
+fun SongInfoDialog(
+    song: Song,
+    onDismiss: () -> Unit,
+    onOpenTagEditor: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Spécifications du Parchemin") },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                InfoRow(label = "Titre", value = song.title)
+                InfoRow(label = "Artiste", value = song.artist)
+                InfoRow(label = "Album", value = song.album)
+                InfoRow(label = "Durée", value = SongFormatUtils.formatDuration(song.durationMs))
+                InfoRow(label = "Débit", value = song.bitrate)
+                InfoRow(label = "Échantillonnage", value = song.sampleRate)
+                InfoRow(label = "Taille", value = SongFormatUtils.formatFileSize(song.fileSizeBytes))
+                InfoRow(label = "Format", value = song.mimeType)
+                InfoRow(label = "Chemin", value = song.filePath)
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onOpenTagEditor) {
+                Text("Éditer les balises")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Fermer")
+            }
+        }
+    )
+}
+
+@Composable
+fun InfoRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.secondary,
+            modifier = Modifier.weight(0.4f)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(0.6f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.End
+        )
     }
 }

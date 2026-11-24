@@ -1,18 +1,20 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Disc3,
+  Info,
   Pause,
   Play,
   Repeat,
   Repeat1,
+  ScrollText,
   Shuffle,
   SkipBack,
   SkipForward,
   SlidersHorizontal,
-  Tag,
   Upload,
   Volume2,
   VolumeX,
+  X,
 } from 'lucide-react';
 import { AudioTrack, RepeatMode } from '../types/music';
 import { WebAudioPlayerEngine } from '../utils/audioEngine';
@@ -46,6 +48,13 @@ function formatClock(totalSeconds: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
+function formatFileSize(bytes: number): string {
+  if (bytes >= 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  }
+  return `${(bytes / 1024).toFixed(1)} KB`;
+}
+
 export function PlayerWorkspace({
   tracks,
   currentTrack,
@@ -71,8 +80,9 @@ export function PlayerWorkspace({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imgFailed, setImgFailed] = useState<Record<string, boolean>>({});
   const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [showInfoDialog, setShowInfoDialog] = useState(false);
 
-  // Live Web Audio frequency spectrum
+  // Live Web Audio frequency spectrum rendered in Chakra Orange
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -93,12 +103,12 @@ export function PlayerWorkspace({
       const barWidth = (width - gap * (barCount - 1)) / barCount;
 
       for (let i = 0; i < barCount; i++) {
-        const value = hasAudio ? buffer[i] / 255 : 0.04;
+        const value = hasAudio ? buffer[i] / 255 : 0.05;
         const barHeight = Math.max(3, value * (height - 4));
         const x = i * (barWidth + gap);
         const y = height - barHeight;
 
-        ctx.fillStyle = hasAudio ? '#0F766E' : '#CBD5E1';
+        ctx.fillStyle = hasAudio ? '#FF5722' : '#2D3442';
         ctx.beginPath();
         ctx.roundRect(x, y, barWidth, barHeight, 2);
         ctx.fill();
@@ -122,16 +132,16 @@ export function PlayerWorkspace({
   if (!currentTrack) {
     return (
       <section className="py-20 text-center">
-        <h1 className="font-display text-2xl font-semibold text-slate-900">
+        <h1 className="font-display text-2xl font-semibold text-slate-100">
           Empty Audio Queue
         </h1>
-        <p className="mt-2 text-sm text-slate-600">
+        <p className="mt-2 text-sm text-slate-400">
           Load local MP3, FLAC, WAV, or OGG files to start playback and inspect embedded tags.
         </p>
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="mt-6 inline-flex items-center gap-2 min-h-[44px] px-5 py-2.5 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 cursor-pointer"
+          className="mt-6 inline-flex items-center gap-2 min-h-[44px] px-5 py-2.5 rounded-lg bg-[#D84315] text-white text-sm font-medium hover:bg-[#E64A19] cursor-pointer"
         >
           <Upload className="w-4 h-4" />
           <span>Open Audio Files</span>
@@ -148,47 +158,77 @@ export function PlayerWorkspace({
       aria-label="Audio player workspace"
       className="py-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start"
     >
-      {/* Left / Primary Now Playing Deck */}
-      <div className="lg:col-span-7 bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 space-y-6">
+      {/* Left / Primary Now Playing Seal Deck */}
+      <div className="lg:col-span-7 bg-[#1E222B] border border-[#2A303D] rounded-2xl p-6 sm:p-8 space-y-6">
         <div className="grid grid-cols-1 sm:grid-cols-12 gap-6 items-stretch">
-          {/* Square Cover Artwork */}
-          <div className="sm:col-span-5">
-            <div className="aspect-square w-full rounded-xl overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center">
-              {currentTrack.coverUrl && !imgFailed[currentTrack.id] ? (
-                <img
-                  src={currentTrack.coverUrl}
-                  alt={`${currentTrack.album} cover art`}
-                  referrerPolicy="no-referrer"
-                  onError={() =>
-                    setImgFailed((prev) => ({ ...prev, [currentTrack.id]: true }))
-                  }
-                  className="w-full h-full object-cover"
+          {/* Circular Invocation Seal Artwork */}
+          <div className="sm:col-span-5 flex items-center justify-center">
+            <div className="relative w-full max-w-[240px] aspect-square flex items-center justify-center">
+              {/* Outer Concentric Seal SVG Ring */}
+              <svg
+                viewBox="0 0 240 240"
+                aria-hidden="true"
+                className={`absolute inset-0 w-full h-full pointer-events-none ${
+                  isPlaying ? 'animate-seal-spin' : ''
+                }`}
+              >
+                <circle
+                  cx="120"
+                  cy="120"
+                  r="114"
+                  fill="none"
+                  stroke={isPlaying ? '#FF5722' : '#2D3442'}
+                  strokeWidth="1.5"
+                  strokeDasharray="10 8"
+                  strokeOpacity={isPlaying ? 0.65 : 0.9}
                 />
-              ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 text-slate-400 p-4 text-center">
-                  <Disc3 className="w-10 h-10 mb-2" aria-hidden="true" />
-                  <span className="text-xs font-medium text-slate-500 truncate max-w-full">
-                    {currentTrack.album}
-                  </span>
-                </div>
-              )}
+                <circle
+                  cx="120"
+                  cy="120"
+                  r="104"
+                  fill="none"
+                  stroke="#2D3442"
+                  strokeWidth="1"
+                />
+              </svg>
+
+              <div className="w-[80%] h-[80%] rounded-full overflow-hidden border-2 border-[#2A303D] bg-[#14171D] flex items-center justify-center shadow-inner">
+                {currentTrack.coverUrl && !imgFailed[currentTrack.id] ? (
+                  <img
+                    src={currentTrack.coverUrl}
+                    alt={`${currentTrack.album} cover art`}
+                    referrerPolicy="no-referrer"
+                    onError={() =>
+                      setImgFailed((prev) => ({ ...prev, [currentTrack.id]: true }))
+                    }
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center bg-[#181B22] text-slate-400 p-4 text-center">
+                    <Disc3 className="w-10 h-10 mb-2 text-[#FF5722]" aria-hidden="true" />
+                    <span className="text-xs font-medium text-slate-300 truncate max-w-full">
+                      {currentTrack.album}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
           {/* Track Metadata & Quick Actions */}
           <div className="sm:col-span-7 flex flex-col justify-between gap-4 min-w-0">
             <div className="space-y-2">
-              <p className="text-xs font-mono text-slate-500 truncate tabular-nums">
+              <p className="text-xs font-mono text-slate-400 truncate tabular-nums">
                 {currentTrack.mimeType} · {currentTrack.bitrate} · {currentTrack.sampleRate}
                 {currentTrack.year ? ` · ${currentTrack.year}` : ''}
               </p>
-              <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900 leading-tight text-balance">
+              <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-white leading-tight text-balance">
                 {currentTrack.title}
               </h1>
-              <p className="text-base text-slate-700 truncate">
+              <p className="text-base text-slate-200 truncate">
                 {currentTrack.artist}
               </p>
-              <p className="text-sm text-slate-500 truncate">
+              <p className="text-sm text-slate-400 truncate">
                 {currentTrack.album}
                 {currentTrack.genre ? ` · ${currentTrack.genre}` : ''}
               </p>
@@ -210,18 +250,26 @@ export function PlayerWorkspace({
               <button
                 type="button"
                 onClick={onOpenTagEditor}
-                className="inline-flex items-center gap-1.5 min-h-[40px] px-3.5 py-2 rounded-lg border border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer whitespace-nowrap"
+                className="inline-flex items-center gap-1.5 min-h-[40px] px-3.5 py-2 rounded-lg border border-[#2F3644] bg-[#161920] text-xs font-medium text-slate-200 hover:bg-[#242936] hover:text-white transition-colors cursor-pointer whitespace-nowrap"
               >
-                <Tag className="w-3.5 h-3.5" aria-hidden="true" />
-                <span>Edit Tags</span>
+                <ScrollText className="w-3.5 h-3.5 text-[#FF5722]" aria-hidden="true" />
+                <span>Tag Scroll</span>
               </button>
               <button
                 type="button"
                 onClick={onOpenEqualizer}
-                className="inline-flex items-center gap-1.5 min-h-[40px] px-3.5 py-2 rounded-lg border border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer whitespace-nowrap"
+                className="inline-flex items-center gap-1.5 min-h-[40px] px-3.5 py-2 rounded-lg border border-[#2F3644] bg-[#161920] text-xs font-medium text-slate-200 hover:bg-[#242936] hover:text-white transition-colors cursor-pointer whitespace-nowrap"
               >
-                <SlidersHorizontal className="w-3.5 h-3.5" aria-hidden="true" />
-                <span>Equalizer</span>
+                <SlidersHorizontal className="w-3.5 h-3.5 text-[#FF5722]" aria-hidden="true" />
+                <span>3D Seal EQ</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowInfoDialog(true)}
+                className="inline-flex items-center gap-1.5 min-h-[40px] px-3.5 py-2 rounded-lg border border-[#2F3644] bg-[#161920] text-xs font-medium text-slate-200 hover:bg-[#242936] hover:text-white transition-colors cursor-pointer whitespace-nowrap"
+              >
+                <Info className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />
+                <span>Track Info</span>
               </button>
             </div>
           </div>
@@ -237,19 +285,19 @@ export function PlayerWorkspace({
             value={Math.min(duration, Math.floor(currentTime))}
             onChange={(e) => onSeek(Number(e.target.value))}
             aria-label="Seek playback position"
-            className="w-full accent-teal-700 cursor-pointer h-2 rounded-lg"
+            className="w-full accent-[#FF5722] cursor-pointer h-2 rounded-lg"
             style={{
-              background: `linear-gradient(to right, #0F766E ${progressPercent}%, #E2E8F0 ${progressPercent}%)`,
+              background: `linear-gradient(to right, #FF5722 ${progressPercent}%, #2A303D ${progressPercent}%)`,
             }}
           />
-          <div className="flex items-center justify-between text-xs font-mono text-slate-500 tabular-nums">
+          <div className="flex items-center justify-between text-xs font-mono text-slate-400 tabular-nums">
             <span>{formatClock(currentTime)}</span>
             <span>{formatClock(duration)}</span>
           </div>
         </div>
 
         {/* Transport & Volume Controls */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2 border-t border-slate-100">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-3 border-t border-[#2A303D]">
           <div className="flex items-center gap-2 sm:gap-3">
             <button
               type="button"
@@ -258,8 +306,8 @@ export function PlayerWorkspace({
               aria-pressed={shuffleEnabled}
               className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg transition-colors cursor-pointer ${
                 shuffleEnabled
-                  ? 'text-teal-700 bg-teal-50'
-                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+                  ? 'text-[#FF5722] bg-[#FF5722]/15'
+                  : 'text-slate-400 hover:text-white hover:bg-[#262B36]'
               }`}
             >
               <Shuffle className="w-4 h-4" />
@@ -269,29 +317,38 @@ export function PlayerWorkspace({
               type="button"
               onClick={onPrevious}
               aria-label="Previous track"
-              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-slate-200 hover:text-white hover:bg-[#262B36] transition-colors cursor-pointer"
             >
               <SkipBack className="w-5 h-5" />
             </button>
 
-            <button
-              type="button"
-              onClick={onTogglePlay}
-              aria-label={isPlaying ? 'Pause playback' : 'Play track'}
-              className="min-h-[52px] min-w-[52px] flex items-center justify-center rounded-full bg-slate-900 text-white hover:bg-slate-800 active:scale-95 transition-all cursor-pointer shadow-sm"
-            >
-              {isPlaying ? (
-                <Pause className="w-5 h-5" />
-              ) : (
-                <Play className="w-5 h-5 ml-0.5" />
+            {/* Pulsing Chakra Play / Pause Button */}
+            <div className="relative flex items-center justify-center w-16 h-16">
+              {isPlaying && (
+                <span
+                  aria-hidden="true"
+                  className="absolute inset-0 rounded-full bg-[#FF5722]/45 animate-chakra-aura pointer-events-none"
+                />
               )}
-            </button>
+              <button
+                type="button"
+                onClick={onTogglePlay}
+                aria-label={isPlaying ? 'Pause playback' : 'Play track'}
+                className="relative z-10 min-h-[54px] min-w-[54px] flex items-center justify-center rounded-full bg-[#E64A19] text-white hover:bg-[#FF5722] active:scale-95 transition-all cursor-pointer shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF5722] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1E222B]"
+              >
+                {isPlaying ? (
+                  <Pause className="w-5 h-5" />
+                ) : (
+                  <Play className="w-5 h-5 ml-0.5" />
+                )}
+              </button>
+            </div>
 
             <button
               type="button"
               onClick={onNext}
               aria-label="Next track"
-              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-slate-200 hover:text-white hover:bg-[#262B36] transition-colors cursor-pointer"
             >
               <SkipForward className="w-5 h-5" />
             </button>
@@ -302,8 +359,8 @@ export function PlayerWorkspace({
               aria-label={`Repeat mode: ${repeatMode}`}
               className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg transition-colors cursor-pointer ${
                 repeatMode !== 'off'
-                  ? 'text-teal-700 bg-teal-50'
-                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+                  ? 'text-[#FF5722] bg-[#FF5722]/15'
+                  : 'text-slate-400 hover:text-white hover:bg-[#262B36]'
               }`}
             >
               {repeatMode === 'one' ? (
@@ -319,7 +376,7 @@ export function PlayerWorkspace({
               type="button"
               onClick={() => onVolumeChange(volume === 0 ? 0.8 : 0)}
               aria-label={volume === 0 ? 'Unmute' : 'Mute'}
-              className="min-h-[36px] min-w-[36px] flex items-center justify-center text-slate-500 hover:text-slate-900 cursor-pointer"
+              className="min-h-[36px] min-w-[36px] flex items-center justify-center text-slate-400 hover:text-white cursor-pointer"
             >
               {volume === 0 ? (
                 <VolumeX className="w-4 h-4" />
@@ -335,7 +392,7 @@ export function PlayerWorkspace({
               value={volume}
               onChange={(e) => onVolumeChange(Number(e.target.value))}
               aria-label="Output volume"
-              className="w-full accent-slate-900 cursor-pointer h-1.5"
+              className="w-full accent-[#FF5722] cursor-pointer h-1.5"
             />
           </div>
         </div>
@@ -349,16 +406,16 @@ export function PlayerWorkspace({
         }}
         onDragLeave={() => setIsDraggingOver(false)}
         onDrop={handleDrop}
-        className={`lg:col-span-5 bg-white border rounded-2xl overflow-hidden transition-colors ${
-          isDraggingOver ? 'border-teal-600 bg-teal-50/30' : 'border-slate-200'
+        className={`lg:col-span-5 bg-[#1E222B] border rounded-2xl overflow-hidden transition-colors ${
+          isDraggingOver ? 'border-[#FF5722] bg-[#242935]' : 'border-[#2A303D]'
         }`}
       >
-        <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between gap-4">
+        <div className="px-5 py-4 border-b border-[#2A303D] flex items-center justify-between gap-4">
           <div>
-            <h2 className="font-display text-base font-semibold text-slate-900">
+            <h2 className="font-display text-base font-semibold text-white">
               Library Queue
             </h2>
-            <p className="text-xs text-slate-500 font-mono tabular-nums">
+            <p className="text-xs text-slate-400 font-mono tabular-nums">
               {tracks.length} {tracks.length === 1 ? 'track' : 'tracks'}
             </p>
           </div>
@@ -379,14 +436,14 @@ export function PlayerWorkspace({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="inline-flex items-center gap-1.5 min-h-[38px] px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+            className="inline-flex items-center gap-1.5 min-h-[38px] px-3 py-1.5 rounded-lg border border-[#2F3644] bg-[#161920] text-xs font-medium text-slate-200 hover:bg-[#262B36] transition-colors cursor-pointer whitespace-nowrap shrink-0"
           >
-            <Upload className="w-3.5 h-3.5" aria-hidden="true" />
+            <Upload className="w-3.5 h-3.5 text-[#FF5722]" aria-hidden="true" />
             <span>Add Audio</span>
           </button>
         </div>
 
-        <div className="divide-y divide-slate-100 max-h-[460px] overflow-y-auto">
+        <div className="divide-y divide-[#272C38] max-h-[460px] overflow-y-auto">
           {tracks.map((track, idx) => {
             const active = track.id === currentTrack.id;
             return (
@@ -395,15 +452,19 @@ export function PlayerWorkspace({
                 type="button"
                 onClick={() => onSelectTrack(track.id)}
                 className={`w-full text-left px-5 py-3.5 flex items-center justify-between gap-4 transition-colors cursor-pointer min-h-[64px] ${
-                  active ? 'bg-slate-100/80' : 'hover:bg-slate-50'
+                  active ? 'bg-[#262B38]' : 'hover:bg-[#232732]'
                 }`}
               >
                 <div className="flex items-center gap-3.5 min-w-0">
-                  <span className="w-5 text-xs font-mono text-slate-400 tabular-nums shrink-0">
+                  <span
+                    className={`w-5 text-xs font-mono tabular-nums shrink-0 ${
+                      active && isPlaying ? 'text-[#FF5722]' : 'text-slate-500'
+                    }`}
+                  >
                     {active && isPlaying ? '▶' : String(idx + 1).padStart(2, '0')}
                   </span>
 
-                  <div className="w-10 h-10 rounded-md overflow-hidden border border-slate-200 bg-slate-100 shrink-0 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-md overflow-hidden border border-[#2F3644] bg-[#14171D] shrink-0 flex items-center justify-center">
                     {track.coverUrl && !imgFailed[track.id] ? (
                       <img
                         src={track.coverUrl}
@@ -415,7 +476,7 @@ export function PlayerWorkspace({
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <Disc3 className="w-4 h-4 text-slate-400" aria-hidden="true" />
+                      <Disc3 className="w-4 h-4 text-slate-500" aria-hidden="true" />
                     )}
                   </div>
 
@@ -423,19 +484,19 @@ export function PlayerWorkspace({
                     <p
                       className={`text-sm truncate ${
                         active
-                          ? 'font-semibold text-teal-800'
-                          : 'font-medium text-slate-900'
+                          ? 'font-semibold text-[#FF784E]'
+                          : 'font-medium text-slate-100'
                       }`}
                     >
                       {track.title}
                     </p>
-                    <p className="text-xs text-slate-500 truncate">
+                    <p className="text-xs text-slate-400 truncate">
                       {track.artist} · {track.format}
                     </p>
                   </div>
                 </div>
 
-                <span className="text-xs font-mono text-slate-500 tabular-nums shrink-0">
+                <span className="text-xs font-mono text-slate-400 tabular-nums shrink-0">
                   {formatClock(track.durationSeconds)}
                 </span>
               </button>
@@ -443,10 +504,88 @@ export function PlayerWorkspace({
           })}
         </div>
 
-        <div className="px-5 py-3 bg-slate-50 border-t border-slate-200 text-xs text-slate-500">
+        <div className="px-5 py-3 bg-[#171A21] border-t border-[#2A303D] text-xs text-slate-400">
           Drop MP3, FLAC, WAV, or OGG files anywhere in the queue to parse embedded ID3 tags.
         </div>
       </div>
+
+      {/* Track Technical Info Dialog */}
+      {showInfoDialog && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="track-info-title"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs"
+          onClick={() => setShowInfoDialog(false)}
+        >
+          <div
+            className="w-full max-w-md bg-[#1E222B] border border-[#2F3644] rounded-2xl p-6 space-y-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-4 border-b border-[#2A303D] pb-4">
+              <h2 id="track-info-title" className="font-display text-lg font-semibold text-white">
+                Track Specifications
+              </h2>
+              <button
+                type="button"
+                onClick={() => setShowInfoDialog(false)}
+                aria-label="Close track specifications"
+                className="min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-[#2A303D] cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <dl className="space-y-2.5 text-sm">
+              {[
+                ['Title', currentTrack.title],
+                ['Artist', currentTrack.artist],
+                ['Album', currentTrack.album],
+                ['Genre', currentTrack.genre || 'Unknown'],
+                ['Year', currentTrack.year || 'Unknown'],
+                ['Duration', formatClock(currentTrack.durationSeconds)],
+                ['Bitrate', currentTrack.bitrate],
+                ['Sample Rate', currentTrack.sampleRate],
+                ['File Size', formatFileSize(currentTrack.fileSizeBytes)],
+                ['MIME Type', currentTrack.mimeType],
+              ].map(([label, val]) => (
+                <div key={label} className="flex items-center justify-between gap-4">
+                  <dt className="text-slate-400 shrink-0">{label}</dt>
+                  <dd className="font-mono text-xs text-slate-100 text-right truncate tabular-nums">
+                    {val}
+                  </dd>
+                </div>
+              ))}
+              <div className="pt-2 border-t border-[#2A303D]">
+                <dt className="text-slate-400 text-xs mb-1">File Path</dt>
+                <dd className="font-mono text-[11px] text-slate-300 break-all">
+                  {currentTrack.filePath}
+                </dd>
+              </div>
+            </dl>
+
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-[#2A303D]">
+              <button
+                type="button"
+                onClick={() => setShowInfoDialog(false)}
+                className="min-h-[40px] px-4 py-2 rounded-lg border border-[#2F3644] text-xs font-medium text-slate-300 hover:bg-[#262B36] cursor-pointer"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowInfoDialog(false);
+                  onOpenTagEditor();
+                }}
+                className="min-h-[40px] px-4 py-2 rounded-lg bg-[#D84315] text-white text-xs font-medium hover:bg-[#E64A19] cursor-pointer"
+              >
+                Edit Tags in Scroll
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

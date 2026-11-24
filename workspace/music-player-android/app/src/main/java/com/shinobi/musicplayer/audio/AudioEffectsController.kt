@@ -1,4 +1,4 @@
-package com.yourapp.musicplayer.audio
+package com.shinobi.musicplayer.audio
 
 import android.content.Context
 import android.media.audiofx.BassBoost
@@ -23,13 +23,12 @@ data class EqualizerUiState(
     val bands: List<EqualizerBand> = emptyList(),
     val presets: List<String> = emptyList(),
     val selectedPresetIndex: Int = -1,
-    val bassBoostStrength: Short = 0,         // Plage 0 à 2000 (Sub-Bass Étendu)
-    val spatialAudioStrength: Short = 0       // Plage 0 à 1000 (Spatial 3D HD)
+    val bassBoostStrength: Short = 0,
+    val spatialAudioStrength: Short = 0
 )
 
 class AudioEffectsController(context: Context) {
-
-    private val prefs = context.getSharedPreferences("ninja_eq_settings", Context.MODE_PRIVATE)
+    private val prefs = context.getSharedPreferences("shinobi_eq", Context.MODE_PRIVATE)
     private var equalizer: Equalizer? = null
     private var bassBoost: BassBoost? = null
     private var virtualizer: Virtualizer? = null
@@ -40,7 +39,6 @@ class AudioEffectsController(context: Context) {
     fun attachToAudioSession(audioSessionId: Int) {
         if (audioSessionId == 0) return
         release()
-
         try {
             val eq = Equalizer(0, audioSessionId)
             val bass = BassBoost(0, audioSessionId)
@@ -61,15 +59,12 @@ class AudioEffectsController(context: Context) {
 
             val presetCount = eq.numberOfPresets.toInt()
             val presetNames = (0 until presetCount).map { eq.getPresetName(it.toShort()) }
-
-            // Restauration des paramètres enregistrés
             val savedPreset = prefs.getInt("eq_preset", -1)
-            val numBands = eq.numberOfBands.toInt()
 
             if (savedPreset in 0 until presetCount) {
                 eq.usePreset(savedPreset.toShort())
             } else {
-                for (i in 0 until numBands) {
+                for (i in 0 until eq.numberOfBands.toInt()) {
                     val savedLevel = prefs.getInt("band_$i", 0).toShort()
                     eq.setBandLevel(i.toShort(), savedLevel.coerceIn(minLevel, maxLevel))
                 }
@@ -112,12 +107,10 @@ class AudioEffectsController(context: Context) {
         val eq = equalizer ?: return
         val clamped = levelMb.coerceIn(_uiState.value.minLevelMb, _uiState.value.maxLevelMb)
         eq.setBandLevel(bandIndex, clamped)
-
         prefs.edit()
             .putInt("band_$bandIndex", clamped.toInt())
             .putInt("eq_preset", -1)
             .apply()
-
         _uiState.update { it.copy(selectedPresetIndex = -1, bands = buildBandList(eq)) }
     }
 

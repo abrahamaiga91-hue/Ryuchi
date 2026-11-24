@@ -1,4 +1,4 @@
-package com.yourapp.musicplayer.audio
+package com.shinobi.musicplayer.audio
 
 import android.content.ComponentName
 import android.content.Context
@@ -8,8 +8,8 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
-import com.yourapp.musicplayer.model.Song
-import com.yourapp.musicplayer.service.PlaybackService
+import com.shinobi.musicplayer.model.Song
+import com.shinobi.musicplayer.service.PlaybackService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

@@ -1,4 +1,4 @@
-package com.yourapp.musicplayer.data
+package com.shinobi.musicplayer.data
 
 import android.app.Activity
 import android.app.RecoverableSecurityException
@@ -22,10 +22,6 @@ class TagEditorRepository(private val context: Context) {
         TagOptionSingleton.getInstance().isAndroid = true
     }
 
-    /**
-     * Updates song metadata (Title, Artist, Album, Year, Genre) and embedded album art.
-     * Safely handles Android Scoped Storage by caching the file during editing.
-     */
     suspend fun updateSongTags(
         songUri: Uri,
         filePath: String,
@@ -41,7 +37,6 @@ class TagEditorRepository(private val context: Context) {
             return@withContext Result.failure(Exception("Source audio file not found on disk."))
         }
 
-        // Step 1: Copy to app cache to allow safe read/write modifications via JAudioTagger
         val cacheFile = File(
             context.cacheDir,
             "editable_${System.currentTimeMillis()}.${originalFile.extension}"
@@ -50,7 +45,6 @@ class TagEditorRepository(private val context: Context) {
         try {
             originalFile.copyTo(cacheFile, overwrite = true)
 
-            // Step 2: Edit tags on cached copy
             val audioFile = AudioFileIO.read(cacheFile)
             val tag = audioFile.tagOrCreateAndSetDefault
 
@@ -71,8 +65,6 @@ class TagEditorRepository(private val context: Context) {
             }
 
             audioFile.commit()
-
-            // Step 3: Write modified file back through MediaStore ContentResolver
             writeCacheBackToUri(cacheFile, songUri)
             Result.success(Unit)
         } catch (e: SecurityException) {

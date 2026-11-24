@@ -1,4 +1,4 @@
-package com.yourapp.musicplayer
+package com.shinobi.musicplayer
 
 import android.Manifest
 import android.app.Activity
@@ -31,15 +31,15 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
-import com.yourapp.musicplayer.audio.EqualizerUiState
-import com.yourapp.musicplayer.audio.PlayerConnection
-import com.yourapp.musicplayer.service.PlaybackService
-import com.yourapp.musicplayer.ui.NinjaMusicPlayerRoot
-import com.yourapp.musicplayer.viewmodel.MusicPlayerViewModel
+import com.shinobi.musicplayer.audio.EqualizerUiState
+import com.shinobi.musicplayer.audio.PlayerConnection
+import com.shinobi.musicplayer.service.PlaybackService
+import com.shinobi.musicplayer.ui.ShinobiAppRoot
+import com.shinobi.musicplayer.viewmodel.MusicPlayerViewModel
 import kotlinx.coroutines.delay
 
-private val NinjaDarkBackground = Color(0xFF121418)
-private val ChakraAccent = Color(0xFFFF5722)
+private val ShinobiDark = Color(0xFF121418)
+private val ChakraOrange = Color(0xFFFF5722)
 private val SealSurface = Color(0xFF1E222B)
 
 class MainActivity : ComponentActivity() {
@@ -152,9 +152,9 @@ class MainActivity : ComponentActivity() {
 
             MaterialTheme(
                 colorScheme = darkColorScheme(
-                    background = NinjaDarkBackground,
+                    background = ShinobiDark,
                     surface = SealSurface,
-                    primary = ChakraAccent,
+                    primary = ChakraOrange,
                     onPrimary = Color.White
                 )
             ) {
@@ -162,7 +162,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    NinjaMusicPlayerRoot(
+                    ShinobiAppRoot(
                         song = currentSong,
                         isPlaying = isPlaying,
                         currentPositionMs = currentPositionMs,

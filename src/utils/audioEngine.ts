@@ -1,24 +1,20 @@
 import { EqBand, SynthVoiceConfig } from '../types/music';
 
+// 5-band Seal Equalizer matching Android AudioEffect hardware frequencies
 export const DEFAULT_EQ_BANDS: EqBand[] = [
-  { frequencyHz: 32, label: '32 Hz', gainDb: 0 },
-  { frequencyHz: 64, label: '64 Hz', gainDb: 0 },
-  { frequencyHz: 125, label: '125 Hz', gainDb: 0 },
-  { frequencyHz: 250, label: '250 Hz', gainDb: 0 },
-  { frequencyHz: 500, label: '500 Hz', gainDb: 0 },
-  { frequencyHz: 1000, label: '1 kHz', gainDb: 0 },
-  { frequencyHz: 2000, label: '2 kHz', gainDb: 0 },
-  { frequencyHz: 4000, label: '4 kHz', gainDb: 0 },
-  { frequencyHz: 8000, label: '8 kHz', gainDb: 0 },
-  { frequencyHz: 16000, label: '16 kHz', gainDb: 0 },
+  { frequencyHz: 60, label: '60 Hz', gainDb: 0 },
+  { frequencyHz: 230, label: '230 Hz', gainDb: 0 },
+  { frequencyHz: 910, label: '910 Hz', gainDb: 0 },
+  { frequencyHz: 3600, label: '3.6 kHz', gainDb: 0 },
+  { frequencyHz: 14000, label: '14 kHz', gainDb: 0 },
 ];
 
 export const EQ_PRESETS: Record<string, number[]> = {
-  Flat: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  Warm: [3, 2.5, 1.5, 0.5, 0, -0.5, -1, -1.5, -2, -2],
-  Vocal: [-2, -1.5, -0.5, 1.5, 3, 3.5, 2.5, 1, 0, -1],
-  'Bass Boost': [6, 5, 4, 2, 0.5, 0, 0, 0.5, 1, 1],
-  Acoustic: [2, 1.5, 1, 0.5, 1, 1.5, 2, 2.5, 2, 1.5],
+  Flat: [0, 0, 0, 0, 0],
+  Warm: [3.5, 1.5, 0, -1, -2],
+  Vocal: [-2, 1, 3.5, 2.5, 0.5],
+  'Bass Boost': [6.5, 4, 0.5, 0, 1],
+  Acoustic: [2.5, 1, 1.5, 2.5, 2],
 };
 
 export class WebAudioPlayerEngine {
@@ -28,6 +24,12 @@ export class WebAudioPlayerEngine {
   private filters: BiquadFilterNode[] = [];
   private eqInput: GainNode | null = null;
   private bassBoostFilter: BiquadFilterNode | null = null;
+
+  // 3D Spatial Audio (Virtualizer) stereo widening nodes
+  private spatialDryGain: GainNode | null = null;
+  private spatialWetGain: GainNode | null = null;
+  private spatialDelayL: DelayNode | null = null;
+  private spatialDelayR: DelayNode | null = null;
 
   // HTMLAudioElement pipeline for real uploaded files
   private audioEl: HTMLAudioElement | null = null;
@@ -40,11 +42,14 @@ export class WebAudioPlayerEngine {
 
   private eqEnabled = true;
   private currentGains: number[] = DEFAULT_EQ_BANDS.map((b) => b.gainDb);
-  private bassBoostStrength = 0; // 0..1000
+  private bassBoostStrength = 600; // 0..2000 (Extended Sub-Bass)
+  private spatialAudioStrength = 450; // 0..1000 (Spatial 3D HD)
 
   private ensureGraph() {
     if (this.ctx) return;
-    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const AudioCtx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     this.ctx = new AudioCtx();
 
     this.eqInput = this.ctx.createGain();
@@ -57,8 +62,10 @@ export class WebAudioPlayerEngine {
 
     this.bassBoostFilter = this.ctx.createBiquadFilter();
     this.bassBoostFilter.type = 'lowshelf';
-    this.bassBoostFilter.frequency.value = 85;
-    this.bassBoostFilter.gain.value = this.eqEnabled ? (this.bassBoostStrength / 1000) * 10 : 0;
+    this.bassBoostFilter.frequency.value = 80;
+    this.bassBoostFilter.gain.value = this.eqEnabled
+      ? (this.bassBoostStrength / 2000) * 14
+      : 0;
 
     this.filters = DEFAULT_EQ_BANDS.map((band, index) => {
       const filter = this.ctx!.createBiquadFilter();
@@ -68,13 +75,14 @@ export class WebAudioPlayerEngine {
         filter.type = 'highshelf';
       } else {
         filter.type = 'peaking';
-        filter.Q.value = 1.4;
+        filter.Q.value = 1.25;
       }
       filter.frequency.value = band.frequencyHz;
       filter.gain.value = this.eqEnabled ? this.currentGains[index] : 0;
       return filter;
     });
 
+    // Build series EQ chain
     let node: AudioNode = this.eqInput;
     node.connect(this.bassBoostFilter);
     node = this.bassBoostFilter;
@@ -82,9 +90,46 @@ export class WebAudioPlayerEngine {
       node.connect(filter);
       node = filter;
     }
-    node.connect(this.masterGain);
+
+    // Build 3D Spatial Audio (Virtualizer) parallel Haas + cross-delay matrix
+    this.spatialDryGain = this.ctx.createGain();
+    this.spatialWetGain = this.ctx.createGain();
+    this.updateSpatialGains();
+
+    const splitter = this.ctx.createChannelSplitter(2);
+    const merger = this.ctx.createChannelMerger(2);
+    this.spatialDelayL = this.ctx.createDelay(0.05);
+    this.spatialDelayR = this.ctx.createDelay(0.05);
+    this.spatialDelayL.delayTime.value = 0.011;
+    this.spatialDelayR.delayTime.value = 0.019;
+
+    const crossGainL = this.ctx.createGain();
+    const crossGainR = this.ctx.createGain();
+    crossGainL.gain.value = -0.35;
+    crossGainR.gain.value = 0.35;
+
+    node.connect(this.spatialDryGain);
+    this.spatialDryGain.connect(this.masterGain);
+
+    node.connect(splitter);
+    splitter.connect(this.spatialDelayL, 0);
+    splitter.connect(this.spatialDelayR, 1);
+    this.spatialDelayL.connect(crossGainL);
+    this.spatialDelayR.connect(crossGainR);
+    crossGainL.connect(merger, 0, 1);
+    crossGainR.connect(merger, 0, 0);
+    merger.connect(this.spatialWetGain);
+    this.spatialWetGain.connect(this.masterGain);
+
     this.masterGain.connect(this.analyser);
     this.analyser.connect(this.ctx.destination);
+  }
+
+  private updateSpatialGains() {
+    if (!this.ctx || !this.spatialDryGain || !this.spatialWetGain) return;
+    const wetRatio = this.eqEnabled ? (this.spatialAudioStrength / 1000) * 0.65 : 0;
+    this.spatialDryGain.gain.setTargetAtTime(1 - wetRatio * 0.2, this.ctx.currentTime, 0.02);
+    this.spatialWetGain.gain.setTargetAtTime(wetRatio, this.ctx.currentTime, 0.02);
   }
 
   public async resumeContext() {
@@ -117,22 +162,28 @@ export class WebAudioPlayerEngine {
     });
     if (this.bassBoostFilter) {
       this.bassBoostFilter.gain.setTargetAtTime(
-        enabled ? (this.bassBoostStrength / 1000) * 10 : 0,
+        enabled ? (this.bassBoostStrength / 2000) * 14 : 0,
+        this.ctx.currentTime,
+        0.02,
+      );
+    }
+    this.updateSpatialGains();
+  }
+
+  public setBassBoostStrength(strength: number) {
+    this.bassBoostStrength = Math.max(0, Math.min(2000, strength));
+    if (this.bassBoostFilter && this.ctx) {
+      this.bassBoostFilter.gain.setTargetAtTime(
+        this.eqEnabled ? (this.bassBoostStrength / 2000) * 14 : 0,
         this.ctx.currentTime,
         0.02,
       );
     }
   }
 
-  public setBassBoostStrength(strength: number) {
-    this.bassBoostStrength = Math.max(0, Math.min(1000, strength));
-    if (this.bassBoostFilter && this.ctx) {
-      this.bassBoostFilter.gain.setTargetAtTime(
-        this.eqEnabled ? (this.bassBoostStrength / 1000) * 10 : 0,
-        this.ctx.currentTime,
-        0.02,
-      );
-    }
+  public setSpatialAudioStrength(strength: number) {
+    this.spatialAudioStrength = Math.max(0, Math.min(1000, strength));
+    this.updateSpatialGains();
   }
 
   public setBandGain(index: number, gainDb: number) {
@@ -232,7 +283,6 @@ export class WebAudioPlayerEngine {
     voiceGain.connect(this.eqInput!);
     this.synthGain = voiceGain;
 
-    // Warm harmonic pad voices
     const baseRatios = config.chordRatios;
     const oscs: OscillatorNode[] = baseRatios.map((ratio, idx) => {
       const osc = ctx.createOscillator();
@@ -250,7 +300,6 @@ export class WebAudioPlayerEngine {
 
     this.synthOscillators = oscs;
 
-    // Gentle melodic arpeggio step
     let step = 0;
     const intervalMs = Math.round((60 / config.tempoBpm) * 1000);
     this.synthStepTimer = window.setInterval(() => {

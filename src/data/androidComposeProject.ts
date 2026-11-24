@@ -35,7 +35,7 @@ jobs:
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: music-player-debug-apk
+          name: shinobi-music-player-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
 `,
 
@@ -57,13 +57,22 @@ jobs:
 local.properties
 `,
 
-  'README.md': `# Music Player (Jetpack Compose + Media3)
+  'README.md': `# Shinobi Music Player (Jetpack Compose + Media3)
 
-Offline Android music player built with **Jetpack Compose**, **Media3 ExoPlayer**, **JAudioTagger**, and custom Seal & Parchment DSP/Metadata UI components.
+Offline Android music player built under \`com.shinobi.musicplayer\` with **Jetpack Compose**, **Media3 ExoPlayer**, **JAudioTagger**, **Coil**, a 3D Spatial & Circular Seal Equalizer, and the **Makimono Parchment** ID3 tag editor.
+
+## Architecture
+
+- \`app/build.gradle.kts\` — Compose BOM, Media3 ExoPlayer & Session, JAudioTagger 3.0.1, Coil
+- \`app/src/main/AndroidManifest.xml\` — Storage permissions & \`PlaybackService\` foreground media service
+- \`model/Song.kt\` — Audio track data model with bitrate, sample rate, size, and MIME metadata
+- \`audio/AudioEffectsController.kt\` — Android \`Equalizer\`, \`BassBoost\`, and \`Virtualizer\` (3D Spatial Audio)
+- \`service/PlaybackService.kt\` — Media3 \`MediaSessionService\` bound to \`AudioEffectsController\`
+- \`ui/ShinobiAppRoot.kt\` — Central invocation seal, \`PulsingChakraButton\`, 3D Seal EQ sheet, Makimono tag scroll, and technical specs dialog
 
 ## GitHub Actions CI Build
 
-Pushing to \`main\` or \`master\` (or triggering **Actions -> Android CI Build**) automatically builds \`app-debug.apk\` using JDK 17 and Gradle 8.11.1, and publishes it as a workflow artifact (\`music-player-debug-apk\`).
+Pushing to \`main\` or \`master\` (or triggering **Actions -> Android CI Build**) automatically builds \`app-debug.apk\` using JDK 17 and Gradle 8.11.1, and publishes it as a workflow artifact (\`shinobi-music-player-debug-apk\`).
 `,
 
   'settings.gradle.kts': `pluginManagement {
@@ -89,7 +98,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "MusicPlayer"
+rootProject.name = "ShinobiMusicPlayer"
 include(":app")
 `,
 
@@ -136,15 +145,25 @@ android.nonTransitiveRClass=true
 }
 
 android {
-    namespace = "com.yourapp.musicplayer"
+    namespace = "com.shinobi.musicplayer"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.yourapp.musicplayer"
+        applicationId = "com.shinobi.musicplayer"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
     }
 
     buildFeatures {
@@ -164,31 +183,27 @@ android {
 dependencies {
     val media3Version = "1.11.1"
 
-    // Core Android & Compose
     implementation(libs.androidx.core.ktx)
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation("androidx.compose.material:material-icons-extended:1.7.5")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
 
-    // Media3 (ExoPlayer + Background Service)
+    // Media3 (ExoPlayer + MediaSessionService)
     implementation("androidx.media3:media3-exoplayer:\$media3Version")
     implementation("androidx.media3:media3-session:\$media3Version")
     implementation("androidx.media3:media3-common:\$media3Version")
 
-    // Metadata & Embedded Tag Editor
+    // JAudioTagger pour l'éditeur de tags ID3
     implementation("net.jthink:jaudiotagger:3.0.1")
 
-    // Album Art Loading
+    // Coil pour les pochettes d'album
     implementation("io.coil-kt:coil-compose:2.7.0")
-
-    // Material Icons Extended (for EQ, Shuffle, Repeat, Tag icons)
-    implementation("androidx.compose.material:material-icons-extended:1.7.5")
-
-    // Compose ViewModel
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
 
     debugImplementation(libs.androidx.ui.tooling)
 }
@@ -197,33 +212,30 @@ dependencies {
   'AndroidManifest.xml': `<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Storage Permissions (Android 13+ vs Android 12 and below) -->
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     <uses-permission
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
-
-    <!-- Background Playback & Equalizer -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
     <application
         android:allowBackup="true"
-        android:label="Music Player"
+        android:label="Shinobi Music Player"
         android:supportsRtl="true"
-        android:theme="@style/Theme.MusicPlayer">
+        android:theme="@style/Theme.ShinobiMusicPlayer">
 
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:theme="@style/Theme.ShinobiMusicPlayer">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
-        <!-- Background Audio Service -->
         <service
             android:name=".service.PlaybackService"
             android:foregroundServiceType="mediaPlayback"
@@ -238,11 +250,11 @@ dependencies {
 
   'res/values/themes.xml': `<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.MusicPlayer" parent="android:Theme.Material.NoActionBar" />
+    <style name="Theme.ShinobiMusicPlayer" parent="android:Theme.Material.NoActionBar" />
 </resources>
 `,
 
-  'model/Song.kt': `package com.yourapp.musicplayer.model
+  'model/Song.kt': `package com.shinobi.musicplayer.model
 
 import android.net.Uri
 
@@ -263,7 +275,7 @@ data class Song(
 )
 `,
 
-  'MainActivity.kt': `package com.yourapp.musicplayer
+  'MainActivity.kt': `package com.shinobi.musicplayer
 
 import android.Manifest
 import android.app.Activity
@@ -296,15 +308,15 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
-import com.yourapp.musicplayer.audio.EqualizerUiState
-import com.yourapp.musicplayer.audio.PlayerConnection
-import com.yourapp.musicplayer.service.PlaybackService
-import com.yourapp.musicplayer.ui.NinjaMusicPlayerRoot
-import com.yourapp.musicplayer.viewmodel.MusicPlayerViewModel
+import com.shinobi.musicplayer.audio.EqualizerUiState
+import com.shinobi.musicplayer.audio.PlayerConnection
+import com.shinobi.musicplayer.service.PlaybackService
+import com.shinobi.musicplayer.ui.ShinobiAppRoot
+import com.shinobi.musicplayer.viewmodel.MusicPlayerViewModel
 import kotlinx.coroutines.delay
 
-private val NinjaDarkBackground = Color(0xFF121418)
-private val ChakraAccent = Color(0xFFFF5722)
+private val ShinobiDark = Color(0xFF121418)
+private val ChakraOrange = Color(0xFFFF5722)
 private val SealSurface = Color(0xFF1E222B)
 
 class MainActivity : ComponentActivity() {
@@ -417,9 +429,9 @@ class MainActivity : ComponentActivity() {
 
             MaterialTheme(
                 colorScheme = darkColorScheme(
-                    background = NinjaDarkBackground,
+                    background = ShinobiDark,
                     surface = SealSurface,
-                    primary = ChakraAccent,
+                    primary = ChakraOrange,
                     onPrimary = Color.White
                 )
             ) {
@@ -427,7 +439,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    NinjaMusicPlayerRoot(
+                    ShinobiAppRoot(
                         song = currentSong,
                         isPlaying = isPlaying,
                         currentPositionMs = currentPositionMs,
@@ -467,9 +479,8 @@ class MainActivity : ComponentActivity() {
 }
 `,
 
-  'service/PlaybackService.kt': `package com.yourapp.musicplayer.service
+  'service/PlaybackService.kt': `package com.shinobi.musicplayer.service
 
-import android.content.Intent
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -478,10 +489,9 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
-import com.yourapp.musicplayer.audio.AudioEffectsController
+import com.shinobi.musicplayer.audio.AudioEffectsController
 
 class PlaybackService : MediaSessionService() {
-
     private var mediaSession: MediaSession? = null
     private lateinit var player: ExoPlayer
 
@@ -493,7 +503,6 @@ class PlaybackService : MediaSessionService() {
     @OptIn(UnstableApi::class)
     override fun onCreate() {
         super.onCreate()
-
         val audioAttributes = AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)
             .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
@@ -532,7 +541,7 @@ class PlaybackService : MediaSessionService() {
 }
 `,
 
-  'audio/PlayerConnection.kt': `package com.yourapp.musicplayer.audio
+  'audio/PlayerConnection.kt': `package com.shinobi.musicplayer.audio
 
 import android.content.ComponentName
 import android.content.Context
@@ -542,8 +551,8 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
-import com.yourapp.musicplayer.model.Song
-import com.yourapp.musicplayer.service.PlaybackService
+import com.shinobi.musicplayer.model.Song
+import com.shinobi.musicplayer.service.PlaybackService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -594,7 +603,7 @@ class PlayerConnection(context: Context) {
 }
 `,
 
-  'audio/AudioEffectsController.kt': `package com.yourapp.musicplayer.audio
+  'audio/AudioEffectsController.kt': `package com.shinobi.musicplayer.audio
 
 import android.content.Context
 import android.media.audiofx.BassBoost
@@ -619,13 +628,12 @@ data class EqualizerUiState(
     val bands: List<EqualizerBand> = emptyList(),
     val presets: List<String> = emptyList(),
     val selectedPresetIndex: Int = -1,
-    val bassBoostStrength: Short = 0,         // Plage 0 à 2000 (Sub-Bass Étendu)
-    val spatialAudioStrength: Short = 0       // Plage 0 à 1000 (Spatial 3D HD)
+    val bassBoostStrength: Short = 0,
+    val spatialAudioStrength: Short = 0
 )
 
 class AudioEffectsController(context: Context) {
-
-    private val prefs = context.getSharedPreferences("ninja_eq_settings", Context.MODE_PRIVATE)
+    private val prefs = context.getSharedPreferences("shinobi_eq", Context.MODE_PRIVATE)
     private var equalizer: Equalizer? = null
     private var bassBoost: BassBoost? = null
     private var virtualizer: Virtualizer? = null
@@ -636,7 +644,6 @@ class AudioEffectsController(context: Context) {
     fun attachToAudioSession(audioSessionId: Int) {
         if (audioSessionId == 0) return
         release()
-
         try {
             val eq = Equalizer(0, audioSessionId)
             val bass = BassBoost(0, audioSessionId)
@@ -657,15 +664,12 @@ class AudioEffectsController(context: Context) {
 
             val presetCount = eq.numberOfPresets.toInt()
             val presetNames = (0 until presetCount).map { eq.getPresetName(it.toShort()) }
-
-            // Restauration des paramètres enregistrés
             val savedPreset = prefs.getInt("eq_preset", -1)
-            val numBands = eq.numberOfBands.toInt()
 
             if (savedPreset in 0 until presetCount) {
                 eq.usePreset(savedPreset.toShort())
             } else {
-                for (i in 0 until numBands) {
+                for (i in 0 until eq.numberOfBands.toInt()) {
                     val savedLevel = prefs.getInt("band_\$i", 0).toShort()
                     eq.setBandLevel(i.toShort(), savedLevel.coerceIn(minLevel, maxLevel))
                 }
@@ -708,12 +712,10 @@ class AudioEffectsController(context: Context) {
         val eq = equalizer ?: return
         val clamped = levelMb.coerceIn(_uiState.value.minLevelMb, _uiState.value.maxLevelMb)
         eq.setBandLevel(bandIndex, clamped)
-
         prefs.edit()
             .putInt("band_\$bandIndex", clamped.toInt())
             .putInt("eq_preset", -1)
             .apply()
-
         _uiState.update { it.copy(selectedPresetIndex = -1, bands = buildBandList(eq)) }
     }
 
@@ -761,13 +763,13 @@ class AudioEffectsController(context: Context) {
 }
 `,
 
-  'data/AudioRepository.kt': `package com.yourapp.musicplayer.data
+  'data/AudioRepository.kt': `package com.shinobi.musicplayer.data
 
 import android.content.ContentUris
 import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.provider.MediaStore
-import com.yourapp.musicplayer.model.Song
+import com.shinobi.musicplayer.model.Song
 import java.io.File
 
 class AudioRepository(private val context: Context) {
@@ -783,13 +785,11 @@ class AudioRepository(private val context: Context) {
             MediaStore.Audio.Media.ALBUM,
             MediaStore.Audio.Media.DURATION,
             MediaStore.Audio.Media.SIZE,
-            MediaStore.Audio.Media.DATA, // File path (still useful for metadata retriever)
+            MediaStore.Audio.Media.DATA,
             MediaStore.Audio.Media.MIME_TYPE,
-            MediaStore.Audio.Media.YEAR,
-            MediaStore.Audio.Media.GENRE
+            MediaStore.Audio.Media.YEAR
         )
 
-        // Filter out very short audio files (like notifications or ringtones under 30 seconds)
         val selection = "\${MediaStore.Audio.Media.IS_MUSIC} != 0 AND \${MediaStore.Audio.Media.DURATION} >= 30000"
         val sortOrder = "\${MediaStore.Audio.Media.TITLE} ASC"
 
@@ -822,8 +822,6 @@ class AudioRepository(private val context: Context) {
                 val year = cursor.getString(yearColumn) ?: ""
 
                 val contentUri = ContentUris.withAppendedId(collection, id)
-
-                // Extract technical audio specs using MediaMetadataRetriever
                 val (bitrate, sampleRate) = extractTechnicalMetadata(filePath)
 
                 songs.add(
@@ -833,7 +831,7 @@ class AudioRepository(private val context: Context) {
                         title = title,
                         artist = artist,
                         album = album,
-                        genre = "Unknown", // MediaStore genre queries require a separate join table; populated via JAudioTagger later if needed
+                        genre = "Unknown",
                         year = year,
                         durationMs = duration,
                         filePath = filePath,
@@ -857,7 +855,6 @@ class AudioRepository(private val context: Context) {
             if (File(filePath).exists()) {
                 retriever.setDataSource(filePath)
 
-                // Extract Bitrate (bits per second -> convert to kbps)
                 val bitrateStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE)
                 val bitrateKbps = if (!bitrateStr.isNullOrEmpty()) {
                     val kbps = bitrateStr.toIntOrNull()?.div(1000)
@@ -866,9 +863,7 @@ class AudioRepository(private val context: Context) {
                     "Unknown"
                 }
 
-                // Extract Sample Rate (Hz -> convert to kHz if applicable)
-                // Note: METADATA_KEY_SAMPLERATE is supported on API 29+
-                val sampleRateHz = retriever.extractMetadata(19 /* METADATA_KEY_SAMPLERATE */)
+                val sampleRateHz = retriever.extractMetadata(19)
                 val sampleRateFormatted = if (!sampleRateHz.isNullOrEmpty()) {
                     val hz = sampleRateHz.toIntOrNull()
                     if (hz != null) {
@@ -894,7 +889,7 @@ class AudioRepository(private val context: Context) {
 }
 `,
 
-  'data/TagEditorRepository.kt': `package com.yourapp.musicplayer.data
+  'data/TagEditorRepository.kt': `package com.shinobi.musicplayer.data
 
 import android.app.Activity
 import android.app.RecoverableSecurityException
@@ -918,10 +913,6 @@ class TagEditorRepository(private val context: Context) {
         TagOptionSingleton.getInstance().isAndroid = true
     }
 
-    /**
-     * Updates song metadata (Title, Artist, Album, Year, Genre) and embedded album art.
-     * Safely handles Android Scoped Storage by caching the file during editing.
-     */
     suspend fun updateSongTags(
         songUri: Uri,
         filePath: String,
@@ -937,7 +928,6 @@ class TagEditorRepository(private val context: Context) {
             return@withContext Result.failure(Exception("Source audio file not found on disk."))
         }
 
-        // Step 1: Copy to app cache to allow safe read/write modifications via JAudioTagger
         val cacheFile = File(
             context.cacheDir,
             "editable_\${System.currentTimeMillis()}.\${originalFile.extension}"
@@ -946,7 +936,6 @@ class TagEditorRepository(private val context: Context) {
         try {
             originalFile.copyTo(cacheFile, overwrite = true)
 
-            // Step 2: Edit tags on cached copy
             val audioFile = AudioFileIO.read(cacheFile)
             val tag = audioFile.tagOrCreateAndSetDefault
 
@@ -967,8 +956,6 @@ class TagEditorRepository(private val context: Context) {
             }
 
             audioFile.commit()
-
-            // Step 3: Write modified file back through MediaStore ContentResolver
             writeCacheBackToUri(cacheFile, songUri)
             Result.success(Unit)
         } catch (e: SecurityException) {
@@ -1012,15 +999,15 @@ class TagEditorRepository(private val context: Context) {
 }
 `,
 
-  'viewmodel/MusicPlayerViewModel.kt': `package com.yourapp.musicplayer.viewmodel
+  'viewmodel/MusicPlayerViewModel.kt': `package com.shinobi.musicplayer.viewmodel
 
 import android.app.Application
 import android.content.IntentSender
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.yourapp.musicplayer.data.AudioRepository
-import com.yourapp.musicplayer.data.TagEditorRepository
-import com.yourapp.musicplayer.model.Song
+import com.shinobi.musicplayer.data.AudioRepository
+import com.shinobi.musicplayer.data.TagEditorRepository
+import com.shinobi.musicplayer.model.Song
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -1080,7 +1067,7 @@ class MusicPlayerViewModel(application: Application) : AndroidViewModel(applicat
                 newAlbum = newAlbum,
                 newYear = newYear,
                 newGenre = newGenre,
-                albumArtBytes = selectedImageByteArray // Optional
+                albumArtBytes = selectedImageByteArray
             )
 
             result.onSuccess {
@@ -1139,7 +1126,7 @@ class MusicPlayerViewModel(application: Application) : AndroidViewModel(applicat
 }
 `,
 
-  'util/SongFormatUtils.kt': `package com.yourapp.musicplayer.util
+  'util/SongFormatUtils.kt': `package com.shinobi.musicplayer.util
 
 import java.util.Locale
 
@@ -1164,15 +1151,11 @@ object SongFormatUtils {
 }
 `,
 
-  'ui/NowPlayingScreen.kt': `package com.yourapp.musicplayer.ui
+  'ui/ShinobiAppRoot.kt': `package com.shinobi.musicplayer.ui
 
-import androidx.compose.animation.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -1180,277 +1163,281 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import com.yourapp.musicplayer.audio.EqualizerUiState
-import com.yourapp.musicplayer.model.Song
-import com.yourapp.musicplayer.ui.components.SealEqualizerNode
-import com.yourapp.musicplayer.util.SongFormatUtils
+import com.shinobi.musicplayer.audio.EqualizerBand
+import com.shinobi.musicplayer.audio.EqualizerUiState
+import com.shinobi.musicplayer.model.Song
+import com.shinobi.musicplayer.ui.components.ParchmentTagEditorScreen
+import com.shinobi.musicplayer.ui.components.PulsingChakraButton
+import com.shinobi.musicplayer.ui.components.SpatialEqualizerBottomSheet
+import com.shinobi.musicplayer.util.SongFormatUtils
 
-/**
- * 1. Now Playing Screen (Album art, track info, progress, controls, EQ & Info buttons)
- */
-@OptIn(ExperimentalMaterial3Api::class)
+private val ChakraOrange = Color(0xFFFF5722)
+private val SealSurface = Color(0xFF1E222B)
+
 @Composable
-fun NowPlayingScreen(
-    currentSong: Song?,
-    isPlaying: Boolean,
-    currentPositionMs: Long,
-    onPlayPauseClick: () -> Unit,
-    onNextClick: () -> Unit,
-    onPreviousClick: () -> Unit,
-    onSeek: (Long) -> Unit,
-    onOpenEqualizer: () -> Unit,
-    onOpenSongInfo: () -> Unit
+fun ShinobiAppRoot(
+    song: Song? = null,
+    isPlaying: Boolean = false,
+    currentPositionMs: Long = 45000L,
+    eqState: EqualizerUiState? = null,
+    onPlayPauseClick: (() -> Unit)? = null,
+    onNextClick: (() -> Unit)? = null,
+    onPreviousClick: (() -> Unit)? = null,
+    onSeek: ((Long) -> Unit)? = null,
+    onToggleEqualizer: ((Boolean) -> Unit)? = null,
+    onBandLevelChanged: ((Short, Short) -> Unit)? = null,
+    onSpatialChanged: ((Short) -> Unit)? = null,
+    onBassChanged: ((Short) -> Unit)? = null,
+    onSaveTags: ((Song, String, String, String, String, String, () -> Unit) -> Unit)? = null
 ) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Now Playing", style = MaterialTheme.typography.titleMedium) },
-                actions = {
-                    // Button to open Song Info & Technical Specs dialog
-                    IconButton(onClick = onOpenSongInfo) {
-                        Icon(Icons.Default.Info, contentDescription = "Song Info")
-                    }
-                    // Button to open Equalizer sheet
-                    IconButton(onClick = onOpenEqualizer) {
-                        Icon(Icons.Default.Equalizer, contentDescription = "Equalizer")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
-            )
-        }
-    ) { paddingValues ->
+    var previewPlaying by remember { mutableStateOf(isPlaying) }
+    var previewPositionMs by remember { mutableStateOf(currentPositionMs) }
+    var previewSpatialStrength by remember { mutableStateOf<Short>(750) }
+    var previewExtendedBass by remember { mutableStateOf<Short>(1200) }
+    var previewEnabled by remember { mutableStateOf(true) }
+
+    var showEqSheet by remember { mutableStateOf(false) }
+    var showTagEditor by remember { mutableStateOf(false) }
+    var showInfoDialog by remember { mutableStateOf(false) }
+
+    val currentSong = song ?: Song(
+        id = 1L,
+        uri = android.net.Uri.EMPTY,
+        title = "Chant du Katana Céleste",
+        artist = "Shinobi Sonore",
+        album = "Parchemins Interdits Vol. 1",
+        genre = "Ambient Ninjutsu",
+        year = "2026",
+        durationMs = 210000L,
+        filePath = "/storage/emulated/0/Music/shinobi.mp3",
+        fileSizeBytes = 7500000L,
+        mimeType = "audio/mpeg",
+        bitrate = "320 kbps",
+        sampleRate = "44.1 kHz"
+    )
+
+    val activeEqState = if (eqState != null && eqState.bands.isNotEmpty()) {
+        eqState
+    } else {
+        EqualizerUiState(
+            isEnabled = previewEnabled,
+            bands = listOf(
+                EqualizerBand(0, 60, "60Hz", 300),
+                EqualizerBand(1, 230, "230Hz", -100),
+                EqualizerBand(2, 910, "910Hz", 200),
+                EqualizerBand(3, 3600, "3.6kHz", 150),
+                EqualizerBand(4, 14000, "14kHz", 400)
+            ),
+            bassBoostStrength = previewExtendedBass,
+            spatialAudioStrength = previewSpatialStrength
+        )
+    }
+
+    val effectivePlaying = if (onPlayPauseClick != null) isPlaying else previewPlaying
+    val effectivePositionMs = if (onSeek != null) currentPositionMs else previewPositionMs
+
+    Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Album Art Hero Image
-            Card(
-                modifier = Modifier
-                    .size(280.dp)
-                    .clip(RoundedCornerShape(16.dp)),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    AsyncImage(
-                        model = currentSong?.uri,
-                        contentDescription = "Album Art",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                    if (currentSong == null) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.surfaceVariant),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.MusicNote,
-                                contentDescription = null,
-                                modifier = Modifier.size(64.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                Text(
+                    text = "SHINOBI MUSIC PLAYER",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = ChakraOrange
+                )
+                Row {
+                    IconButton(onClick = { showInfoDialog = true }) {
+                        Icon(Icons.Default.Info, contentDescription = "Infos", tint = Color.White)
+                    }
+                    IconButton(onClick = { showTagEditor = true }) {
+                        Icon(Icons.Default.Edit, contentDescription = "Éditeur Makimono", tint = Color.White)
+                    }
+                    IconButton(onClick = { showEqSheet = true }) {
+                        Icon(Icons.Default.Equalizer, contentDescription = "Égaliseur", tint = ChakraOrange)
                     }
                 }
             }
 
-            // Track Title & Artist
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.fillMaxWidth()
+            // Sceau d'invocation central
+            Box(
+                modifier = Modifier
+                    .size(260.dp)
+                    .clip(CircleShape)
+                    .background(SealSurface),
+                contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = currentSong?.title ?: "No Song Playing",
-                    style = MaterialTheme.typography.titleLarge,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Center
+                AsyncImage(
+                    model = currentSong.uri,
+                    contentDescription = "Pochette d'album",
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
                 )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = currentSong?.artist ?: "Unknown Artist",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.secondary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Center
+                Icon(
+                    imageVector = Icons.Default.Album,
+                    contentDescription = null,
+                    modifier = Modifier.size(100.dp),
+                    tint = ChakraOrange.copy(alpha = 0.5f)
                 )
             }
 
-            // Playback Seekbar & Timestamps
-            val duration = currentSong?.durationMs ?: 1L
+            // Infos du morceau
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = currentSong.title,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = currentSong.artist,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            // Barre de progression
+            val safeDuration = currentSong.durationMs.coerceAtLeast(1L).toFloat()
             Column(modifier = Modifier.fillMaxWidth()) {
                 Slider(
-                    value = currentPositionMs.toFloat().coerceIn(0f, duration.toFloat()),
-                    onValueChange = { onSeek(it.toLong()) },
-                    valueRange = 0f..duration.toFloat()
+                    value = effectivePositionMs.toFloat().coerceIn(0f, safeDuration),
+                    onValueChange = { nextPos ->
+                        if (onSeek != null) {
+                            onSeek(nextPos.toLong())
+                        } else {
+                            previewPositionMs = nextPos.toLong()
+                        }
+                    },
+                    valueRange = 0f..safeDuration,
+                    colors = SliderDefaults.colors(
+                        thumbColor = ChakraOrange,
+                        activeTrackColor = ChakraOrange
+                    )
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = SongFormatUtils.formatDuration(currentPositionMs),
-                        style = MaterialTheme.typography.labelSmall
+                        text = SongFormatUtils.formatDuration(effectivePositionMs),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.Gray
                     )
                     Text(
-                        text = SongFormatUtils.formatDuration(duration),
-                        style = MaterialTheme.typography.labelSmall
+                        text = SongFormatUtils.formatDuration(currentSong.durationMs),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.Gray
                     )
                 }
             }
 
-            // Playback Transport Controls
+            // Commandes de lecture & Bouton Chakra Pulsé
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onPreviousClick) {
-                    Icon(Icons.Default.SkipPrevious, contentDescription = "Previous", modifier = Modifier.size(36.dp))
+                IconButton(onClick = { onPreviousClick?.invoke() }) {
+                    Icon(Icons.Default.SkipPrevious, contentDescription = "Précédent", tint = Color.White, modifier = Modifier.size(32.dp))
                 }
-                FilledIconButton(
-                    onClick = onPlayPauseClick,
-                    modifier = Modifier.size(64.dp),
-                    shape = CircleShape
-                ) {
-                    Icon(
-                        imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = "Play/Pause",
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
-                IconButton(onClick = onNextClick) {
-                    Icon(Icons.Default.SkipNext, contentDescription = "Next", modifier = Modifier.size(36.dp))
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-    }
-}
-
-/**
- * 2. Equalizer & Bass Boost Bottom Sheet
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun EqualizerBottomSheet(
-    eqState: EqualizerUiState,
-    onToggleEnabled: (Boolean) -> Unit,
-    onBandLevelChanged: (Short, Short) -> Unit,
-    onPresetSelected: (Int) -> Unit,
-    onBassBoostChanged: (Short) -> Unit,
-    onDismiss: () -> Unit
-) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp)
-                .navigationBarsPadding(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Header Row with Master Switch
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("Sound Equalizer", style = MaterialTheme.typography.titleLarge)
-                Switch(
-                    checked = eqState.isEnabled,
-                    onCheckedChange = onToggleEnabled
+                PulsingChakraButton(
+                    isPlaying = effectivePlaying,
+                    chakraColor = ChakraOrange,
+                    onClick = {
+                        if (onPlayPauseClick != null) {
+                            onPlayPauseClick()
+                        } else {
+                            previewPlaying = !previewPlaying
+                        }
+                    }
                 )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Presets Dropdown or Row
-            if (eqState.presets.isNotEmpty()) {
-                ScrollableTabRow(
-                    selectedTabIndex = eqState.selectedPresetIndex.coerceAtLeast(0),
-                    edgePadding = 0.dp,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    eqState.presets.forEachIndexed { index, presetName ->
-                        Tab(
-                            selected = eqState.selectedPresetIndex == index,
-                            onClick = { onPresetSelected(index) },
-                            text = { Text(presetName, maxLines = 1) }
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(20.dp))
-            }
-
-            // Frequency Dials (Seal Equalizer Nodes)
-            if (eqState.bands.isNotEmpty()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    eqState.bands.forEach { band ->
-                        SealEqualizerNode(
-                            label = band.label,
-                            frequencyHz = band.centerFreqHz,
-                            currentLevelMb = band.currentLevelMb,
-                            minLevelMb = eqState.minLevelMb,
-                            maxLevelMb = eqState.maxLevelMb,
-                            onLevelChanged = { newMb ->
-                                if (eqState.isEnabled) {
-                                    onBandLevelChanged(band.index, newMb)
-                                }
-                            }
-                        )
-                    }
+                IconButton(onClick = { onNextClick?.invoke() }) {
+                    Icon(Icons.Default.SkipNext, contentDescription = "Suivant", tint = Color.White, modifier = Modifier.size(32.dp))
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-            HorizontalDivider()
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
+        }
 
-            // Bass Boost Controller
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("Bass Boost", style = MaterialTheme.typography.bodyLarge)
-                Text("\${eqState.bassBoostStrength / 10}%", style = MaterialTheme.typography.bodyMedium)
-            }
-            Slider(
-                value = eqState.bassBoostStrength.toFloat(),
-                onValueChange = { onBassBoostChanged(it.toInt().toShort()) },
-                valueRange = 0f..1000f,
-                enabled = eqState.isEnabled,
-                modifier = Modifier.fillMaxWidth()
+        // Sceau d'égalisation circulaire 3D HD (Bottom Sheet)
+        if (showEqSheet) {
+            SpatialEqualizerBottomSheet(
+                eqState = activeEqState,
+                spatialAudioStrength = if (eqState != null) eqState.spatialAudioStrength else previewSpatialStrength,
+                extendedBassStrength = if (eqState != null) eqState.bassBoostStrength else previewExtendedBass,
+                onToggleEnabled = { enabled ->
+                    previewEnabled = enabled
+                    onToggleEqualizer?.invoke(enabled)
+                },
+                onBandLevelChanged = { index, level -> onBandLevelChanged?.invoke(index, level) },
+                onSpatialChanged = { nextSpatial ->
+                    previewSpatialStrength = nextSpatial
+                    onSpatialChanged?.invoke(nextSpatial)
+                },
+                onBassChanged = { nextBass ->
+                    previewExtendedBass = nextBass
+                    onBassChanged?.invoke(nextBass)
+                },
+                onDismiss = { showEqSheet = false }
             )
+        }
 
-            Spacer(modifier = Modifier.height(24.dp))
+        // Parchemin Makimono (Éditeur de balises)
+        ParchmentTagEditorScreen(
+            initialTitle = currentSong.title,
+            initialArtist = currentSong.artist,
+            initialAlbum = currentSong.album,
+            initialYear = currentSong.year,
+            initialGenre = currentSong.genre,
+            isVisible = showTagEditor,
+            onSave = { newTitle, newArtist, newAlbum, newYear, newGenre ->
+                if (onSaveTags != null) {
+                    onSaveTags(currentSong, newTitle, newArtist, newAlbum, newYear, newGenre) {
+                        showTagEditor = false
+                    }
+                } else {
+                    showTagEditor = false
+                }
+            },
+            onDismiss = { showTagEditor = false }
+        )
+
+        // Boîte d'informations techniques
+        if (showInfoDialog) {
+            SongInfoDialog(
+                song = currentSong,
+                onDismiss = { showInfoDialog = false },
+                onOpenTagEditor = {
+                    showInfoDialog = false
+                    showTagEditor = true
+                }
+            )
         }
     }
 }
 
-/**
- * 3. Song Info & Technical Specs Dialog
- */
 @Composable
 fun SongInfoDialog(
     song: Song,
@@ -1459,31 +1446,31 @@ fun SongInfoDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Track Information") },
+        title = { Text("Spécifications du Parchemin") },
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                InfoRow(label = "Title", value = song.title)
-                InfoRow(label = "Artist", value = song.artist)
+                InfoRow(label = "Titre", value = song.title)
+                InfoRow(label = "Artiste", value = song.artist)
                 InfoRow(label = "Album", value = song.album)
-                InfoRow(label = "Duration", value = SongFormatUtils.formatDuration(song.durationMs))
-                InfoRow(label = "Bitrate", value = song.bitrate)
-                InfoRow(label = "Sample Rate", value = song.sampleRate)
-                InfoRow(label = "File Size", value = SongFormatUtils.formatFileSize(song.fileSizeBytes))
-                InfoRow(label = "Format / MIME", value = song.mimeType)
-                InfoRow(label = "File Path", value = song.filePath)
+                InfoRow(label = "Durée", value = SongFormatUtils.formatDuration(song.durationMs))
+                InfoRow(label = "Débit", value = song.bitrate)
+                InfoRow(label = "Échantillonnage", value = song.sampleRate)
+                InfoRow(label = "Taille", value = SongFormatUtils.formatFileSize(song.fileSizeBytes))
+                InfoRow(label = "Format", value = song.mimeType)
+                InfoRow(label = "Chemin", value = song.filePath)
             }
         },
         confirmButton = {
             TextButton(onClick = onOpenTagEditor) {
-                Text("Edit Tags")
+                Text("Éditer les balises")
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Close")
+                Text("Fermer")
             }
         }
     )
@@ -1513,294 +1500,7 @@ fun InfoRow(label: String, value: String) {
 }
 `,
 
-  'ui/NinjaMusicPlayerRoot.kt': `package com.yourapp.musicplayer.ui
-
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
-import com.yourapp.musicplayer.audio.EqualizerBand
-import com.yourapp.musicplayer.audio.EqualizerUiState
-import com.yourapp.musicplayer.model.Song
-import com.yourapp.musicplayer.ui.components.ParchmentTagEditorScreen
-import com.yourapp.musicplayer.ui.components.PulsingChakraButton
-import com.yourapp.musicplayer.ui.components.SpatialEqualizerBottomSheet
-import com.yourapp.musicplayer.util.SongFormatUtils
-
-// --- Thème Ninja / Sceau (Chakra d'encre & fond ténébreux) ---
-private val ChakraAccent = Color(0xFFFF5722) // Lueur orangée / Feu ardent
-private val SealSurface = Color(0xFF1E222B)
-
-@Composable
-fun NinjaMusicPlayerRoot(
-    song: Song? = null,
-    isPlaying: Boolean = false,
-    currentPositionMs: Long = 34000L,
-    eqState: EqualizerUiState? = null,
-    onPlayPauseClick: (() -> Unit)? = null,
-    onNextClick: (() -> Unit)? = null,
-    onPreviousClick: (() -> Unit)? = null,
-    onSeek: ((Long) -> Unit)? = null,
-    onToggleEqualizer: ((Boolean) -> Unit)? = null,
-    onBandLevelChanged: ((Short, Short) -> Unit)? = null,
-    onSpatialChanged: ((Short) -> Unit)? = null,
-    onBassChanged: ((Short) -> Unit)? = null,
-    onSaveTags: ((Song, String, String, String, String, String, () -> Unit) -> Unit)? = null
-) {
-    // États locaux de repli pour l'aperçu unifié autonome
-    var previewPlaying by remember { mutableStateOf(isPlaying) }
-    var previewPositionMs by remember { mutableStateOf(currentPositionMs) }
-    var previewSpatialStrength by remember { mutableStateOf<Short>(650) }
-    var previewExtendedBass by remember { mutableStateOf<Short>(1100) }
-
-    // État des feuilles modales (Sceaux et Parchemins)
-    var showEqualizerSheet by remember { mutableStateOf(false) }
-    var showTagEditorScroll by remember { mutableStateOf(false) }
-    var showSongInfoDialog by remember { mutableStateOf(false) }
-
-    // Chanson active (réelle ou exemple Ninja/Sceau)
-    val currentSong = song ?: Song(
-        id = 1L,
-        uri = android.net.Uri.EMPTY,
-        title = "Chant des Cinq Éléments",
-        artist = "Maître du Fuinjutsu",
-        album = "Matrice Sonore Vol. 1",
-        genre = "Ninjutsu Ambiant",
-        year = "2026",
-        durationMs = 210000L,
-        filePath = "/storage/emulated/0/Music/elemental_chant.mp3",
-        fileSizeBytes = 8400000L,
-        mimeType = "audio/mpeg",
-        bitrate = "320 kbps",
-        sampleRate = "44.1 kHz"
-    )
-
-    // État de l'égaliseur circulaire
-    val activeEqState = if (eqState != null && eqState.bands.isNotEmpty()) {
-        eqState
-    } else {
-        EqualizerUiState(
-            isEnabled = true,
-            bands = listOf(
-                EqualizerBand(0, 60, "60Hz", 200),
-                EqualizerBand(1, 230, "230Hz", -150),
-                EqualizerBand(2, 910, "910Hz", 400),
-                EqualizerBand(3, 3600, "3.6kHz", 100),
-                EqualizerBand(4, 14000, "14kHz", 300)
-            )
-        )
-    }
-
-    val effectivePlaying = if (onPlayPauseClick != null) isPlaying else previewPlaying
-    val effectivePositionMs = if (onSeek != null) currentPositionMs else previewPositionMs
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        // --- ÉCRAN PRINCIPAL : Le Noyau d'Invocation ---
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            // Barre supérieure des Sceaux de Contrôle
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "✧ MATRICE AUDIO ✧",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = ChakraAccent
-                )
-                Row {
-                    IconButton(onClick = { showSongInfoDialog = true }) {
-                        Icon(Icons.Default.Info, contentDescription = "Infos", tint = Color.White)
-                    }
-                    IconButton(onClick = { showEqualizerSheet = true }) {
-                        Icon(Icons.Default.Equalizer, contentDescription = "Sceau d'Égalisation", tint = ChakraAccent)
-                    }
-                }
-            }
-
-            // Disque d'Invocation Central (Effet de Résonance)
-            Box(
-                modifier = Modifier
-                    .size(260.dp)
-                    .clip(CircleShape)
-                    .background(SealSurface),
-                contentAlignment = Alignment.Center
-            ) {
-                AsyncImage(
-                    model = currentSong.uri,
-                    contentDescription = "Sceau de l'album",
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp)
-                        .clip(CircleShape),
-                    contentScale = ContentScale.Crop
-                )
-                // Anneau d'énergie central si non chargé
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Album,
-                        contentDescription = null,
-                        modifier = Modifier.size(80.dp),
-                        tint = ChakraAccent.copy(alpha = 0.6f)
-                    )
-                }
-            }
-
-            // Titre et Artiste (Inscriptions)
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = currentSong.title,
-                    style = MaterialTheme.typography.titleLarge,
-                    color = Color.White
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = currentSong.artist,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray
-                )
-            }
-
-            // Ligne de Flux Temporel (Seekbar)
-            val safeDuration = currentSong.durationMs.coerceAtLeast(1L).toFloat()
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Slider(
-                    value = effectivePositionMs.toFloat().coerceIn(0f, safeDuration),
-                    onValueChange = { nextPos ->
-                        if (onSeek != null) {
-                            onSeek(nextPos.toLong())
-                        } else {
-                            previewPositionMs = nextPos.toLong()
-                        }
-                    },
-                    valueRange = 0f..safeDuration,
-                    colors = SliderDefaults.colors(
-                        thumbColor = ChakraAccent,
-                        activeTrackColor = ChakraAccent
-                    )
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        SongFormatUtils.formatDuration(effectivePositionMs),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.Gray
-                    )
-                    Text(
-                        SongFormatUtils.formatDuration(currentSong.durationMs),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.Gray
-                    )
-                }
-            }
-
-            // Commandes de Flux (Canalisation)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = { onPreviousClick?.invoke() }) {
-                    Icon(Icons.Default.SkipPrevious, contentDescription = "Précédent", tint = Color.White, modifier = Modifier.size(32.dp))
-                }
-                PulsingChakraButton(
-                    isPlaying = effectivePlaying,
-                    chakraColor = ChakraAccent,
-                    onClick = {
-                        if (onPlayPauseClick != null) {
-                            onPlayPauseClick()
-                        } else {
-                            previewPlaying = !previewPlaying
-                        }
-                    }
-                )
-                IconButton(onClick = { onNextClick?.invoke() }) {
-                    Icon(Icons.Default.SkipNext, contentDescription = "Suivant", tint = Color.White, modifier = Modifier.size(32.dp))
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-
-        // --- SECTION MODALE 1 : Le Sceau Circulaire & Spatial 3D HD (Égaliseur) ---
-        if (showEqualizerSheet) {
-            SpatialEqualizerBottomSheet(
-                eqState = activeEqState,
-                spatialAudioStrength = if (eqState != null) eqState.spatialAudioStrength else previewSpatialStrength,
-                extendedBassStrength = if (eqState != null) eqState.bassBoostStrength else previewExtendedBass,
-                onToggleEnabled = { enabled -> onToggleEqualizer?.invoke(enabled) },
-                onBandLevelChanged = { index, level -> onBandLevelChanged?.invoke(index, level) },
-                onSpatialChanged = { nextSpatial ->
-                    previewSpatialStrength = nextSpatial
-                    onSpatialChanged?.invoke(nextSpatial)
-                },
-                onBassChanged = { nextBass ->
-                    previewExtendedBass = nextBass
-                    onBassChanged?.invoke(nextBass)
-                },
-                onDismiss = { showEqualizerSheet = false }
-            )
-        }
-
-        // --- SECTION MODALE 2 : Le Rouleau de Parchemin (Éditeur de Balises) ---
-        ParchmentTagEditorScreen(
-            initialTitle = currentSong.title,
-            initialArtist = currentSong.artist,
-            initialAlbum = currentSong.album,
-            initialYear = currentSong.year,
-            initialGenre = currentSong.genre,
-            isVisible = showTagEditorScroll,
-            onSave = { newTitle, newArtist, newAlbum, newYear, newGenre ->
-                if (onSaveTags != null) {
-                    onSaveTags(currentSong, newTitle, newArtist, newAlbum, newYear, newGenre) {
-                        showTagEditorScroll = false
-                    }
-                } else {
-                    showTagEditorScroll = false
-                }
-            },
-            onDismiss = { showTagEditorScroll = false }
-        )
-
-        // --- SECTION MODALE 3 : Boîte d'Informations Techniques ---
-        if (showSongInfoDialog) {
-            SongInfoDialog(
-                song = currentSong,
-                onDismiss = { showSongInfoDialog = false },
-                onOpenTagEditor = {
-                    showSongInfoDialog = false
-                    showTagEditorScroll = true
-                }
-            )
-        }
-    }
-}
-`,
-
-  'ui/components/PulsingChakraButton.kt': `package com.yourapp.musicplayer.ui.components
+  'ui/components/PulsingChakraButton.kt': `package com.shinobi.musicplayer.ui.components
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -1827,7 +1527,6 @@ fun PulsingChakraButton(
     chakraColor: Color,
     onClick: () -> Unit
 ) {
-    // Animation de pulsation active uniquement lorsque la musique joue
     val infiniteTransition = rememberInfiniteTransition(label = "chakra_pulse")
 
     val pulseScale by infiniteTransition.animateFloat(
@@ -1854,7 +1553,6 @@ fun PulsingChakraButton(
         contentAlignment = Alignment.Center,
         modifier = Modifier.size(96.dp)
     ) {
-        // Aura pulsée en arrière-plan
         if (isPlaying) {
             Box(
                 modifier = Modifier
@@ -1864,7 +1562,6 @@ fun PulsingChakraButton(
             )
         }
 
-        // Bouton principal d'invocation
         FilledIconButton(
             onClick = onClick,
             modifier = Modifier.size(64.dp),
@@ -1882,23 +1579,116 @@ fun PulsingChakraButton(
 }
 `,
 
-  'ui/components/SpatialEqualizerBottomSheet.kt': `package com.yourapp.musicplayer.ui.components
+  'ui/components/SealEqualizerNode.kt': `package com.shinobi.musicplayer.ui.components
+
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.dp
+import kotlin.math.cos
+import kotlin.math.sin
+
+@Composable
+fun SealEqualizerNode(
+    label: String,
+    frequencyHz: Int,
+    currentLevelMb: Short,
+    minLevelMb: Short,
+    maxLevelMb: Short,
+    onLevelChanged: (Short) -> Unit
+) {
+    val range = (maxLevelMb - minLevelMb).toFloat()
+    val normalized = (currentLevelMb - minLevelMb).toFloat() / if (range == 0f) 1f else range
+    var angle by remember(currentLevelMb) { mutableStateOf(normalized * 270f - 135f) }
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.padding(4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(68.dp)
+                .pointerInput(Unit) {
+                    detectDragGestures { change, dragAmount ->
+                        change.consume()
+                        angle = (angle + dragAmount.x * 0.7f - dragAmount.y * 0.7f).coerceIn(-135f, 135f)
+                        val newNormalized = (angle + 135f) / 270f
+                        val newMb = (minLevelMb + newNormalized * range).toInt().toShort()
+                        onLevelChanged(newMb)
+                    }
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            val primaryColor = MaterialTheme.colorScheme.primary
+            val surfaceVariant = MaterialTheme.colorScheme.surfaceVariant
+
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val center = Offset(size.width / 2f, size.height / 2f)
+                val radius = size.minDimension / 2f - 6.dp.toPx()
+
+                drawCircle(
+                    color = surfaceVariant,
+                    radius = radius,
+                    center = center,
+                    style = Stroke(width = 3.dp.toPx())
+                )
+
+                drawArc(
+                    color = primaryColor,
+                    startAngle = -135f,
+                    sweepAngle = angle + 135f,
+                    useCenter = false,
+                    style = Stroke(width = 5.dp.toPx())
+                )
+
+                val rad = Math.toRadians((angle).toDouble())
+                val indicatorX = center.x + (radius - 10.dp.toPx()) * cos(rad).toFloat()
+                val indicatorY = center.y + (radius - 10.dp.toPx()) * sin(rad).toFloat()
+                drawCircle(
+                    color = primaryColor,
+                    radius = 4.dp.toPx(),
+                    center = Offset(indicatorX, indicatorY)
+                )
+            }
+
+            Text(
+                text = "\${currentLevelMb / 100}dB",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(text = label, style = MaterialTheme.typography.labelSmall)
+    }
+}
+`,
+
+  'ui/components/SpatialEqualizerBottomSheet.kt': `package com.shinobi.musicplayer.ui.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.yourapp.musicplayer.audio.EqualizerUiState
+import com.shinobi.musicplayer.audio.EqualizerUiState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SpatialEqualizerBottomSheet(
     eqState: EqualizerUiState,
-    spatialAudioStrength: Short, // 0 à 1000 pour la spatialisation 3D
-    extendedBassStrength: Short, // 0 à 2000 pour des basses ultra-profondes
+    spatialAudioStrength: Short,
+    extendedBassStrength: Short,
     onToggleEnabled: (Boolean) -> Unit,
     onBandLevelChanged: (Short, Short) -> Unit,
     onSpatialChanged: (Short) -> Unit,
@@ -1918,13 +1708,12 @@ fun SpatialEqualizerBottomSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Matrice 3D HD & Sceau Acoustique", style = MaterialTheme.typography.titleLarge)
+                Text("Matrice 3D HD & Sceau Audio", style = MaterialTheme.typography.titleLarge)
                 Switch(checked = eqState.isEnabled, onCheckedChange = onToggleEnabled)
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Cercles de fréquences (Nœuds du Sceau)
             if (eqState.bands.isNotEmpty()) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1949,14 +1738,17 @@ fun SpatialEqualizerBottomSheet(
             HorizontalDivider(color = Color.Gray.copy(alpha = 0.3f))
             Spacer(modifier = Modifier.height(16.dp))
 
-            // --- SECTION 3D HD : Audio Spatial & Surround ---
             Column(modifier = Modifier.fillMaxWidth()) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Champ Sonore Spatial 3D (HD)", style = MaterialTheme.typography.bodyMedium)
-                    Text("\${spatialAudioStrength / 10}%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                    Text("Champ Sonore Spatial 3D", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        "\${spatialAudioStrength / 10}%",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
                 Slider(
                     value = spatialAudioStrength.toFloat(),
@@ -1968,19 +1760,22 @@ fun SpatialEqualizerBottomSheet(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // --- SECTION BASSES ÉTENDUES : Profondeur Maximale ---
             Column(modifier = Modifier.fillMaxWidth()) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Amplification Basses Profondes (Sub-Bass)", style = MaterialTheme.typography.bodyMedium)
-                    Text("\${extendedBassStrength / 20}%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                    Text("Sub-Bass Étendu", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        "\${extendedBassStrength / 20}%",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
                 Slider(
                     value = extendedBassStrength.toFloat(),
                     onValueChange = { onBassChanged(it.toInt().toShort()) },
-                    valueRange = 0f..2000f, // Plage élargie pour un impact physique réaliste
+                    valueRange = 0f..2000f,
                     enabled = eqState.isEnabled
                 )
             }
@@ -1991,165 +1786,7 @@ fun SpatialEqualizerBottomSheet(
 }
 `,
 
-  'ui/components/SealEqualizerNode.kt': `package com.yourapp.musicplayer.ui.components
-
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.unit.dp
-import com.yourapp.musicplayer.audio.EqualizerUiState
-import kotlin.math.*
-
-@Composable
-fun SealEqualizerNode(
-    label: String,
-    frequencyHz: Int,
-    currentLevelMb: Short,
-    minLevelMb: Short,
-    maxLevelMb: Short,
-    onLevelChanged: (Short) -> Unit
-) {
-    // Convert decibels to an angle (-135° to +135°)
-    val range = (maxLevelMb - minLevelMb).toFloat()
-    val normalized = (currentLevelMb - minLevelMb).toFloat() / if (range == 0f) 1f else range
-    var angle by remember(currentLevelMb) { mutableStateOf(normalized * 270f - 135f) }
-
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.padding(8.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(72.dp)
-                .pointerInput(Unit) {
-                    detectDragGestures { change, dragAmount ->
-                        change.consume()
-                        // Adjust angle based on vertical/horizontal drag
-                        angle = (angle + dragAmount.x * 0.7f).coerceIn(-135f, 135f)
-                        // Convert angle back to millibels
-                        val newNormalized = (angle + 135f) / 270f
-                        val newMb = (minLevelMb + newNormalized * range).toInt().toShort()
-                        onLevelChanged(newMb)
-                    }
-                },
-            contentAlignment = Alignment.Center
-        ) {
-            val primaryColor = MaterialTheme.colorScheme.primary
-            val surfaceVariant = MaterialTheme.colorScheme.surfaceVariant
-
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val center = Offset(size.width / 2f, size.height / 2f)
-                val radius = size.minDimension / 2f - 6.dp.toPx()
-
-                // Outer energy ring (Seal border)
-                drawCircle(
-                    color = surfaceVariant,
-                    radius = radius,
-                    center = center,
-                    style = Stroke(width = 3.dp.toPx())
-                )
-
-                // Active energy arc
-                drawArc(
-                    color = primaryColor,
-                    startAngle = -135f,
-                    sweepAngle = angle + 135f,
-                    useCenter = false,
-                    style = Stroke(width = 5.dp.toPx())
-                )
-
-                // Core indicator node
-                val rad = Math.toRadians((angle).toDouble())
-                val indicatorX = center.x + (radius - 10.dp.toPx()) * cos(rad).toFloat()
-                val indicatorY = center.y + (radius - 10.dp.toPx()) * sin(rad).toFloat()
-                drawCircle(
-                    color = primaryColor,
-                    radius = 4.dp.toPx(),
-                    center = Offset(indicatorX, indicatorY)
-                )
-            }
-
-            // Central text value display
-            Text(
-                text = "\${currentLevelMb / 100}dB",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        }
-
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(text = label, style = MaterialTheme.typography.labelMedium)
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun SealEqualizerBottomSheet(
-    eqState: EqualizerUiState,
-    onToggleEnabled: (Boolean) -> Unit,
-    onBandLevelChanged: (Short, Short) -> Unit,
-    onPresetSelected: (Int) -> Unit,
-    onDismiss: () -> Unit
-) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp)
-                .navigationBarsPadding(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("Matrice de Fréquence (Sceau Audio)", style = MaterialTheme.typography.titleLarge)
-                Switch(checked = eqState.isEnabled, onCheckedChange = onToggleEnabled)
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Circular nodes grid simulating frequency channels
-            if (eqState.bands.isNotEmpty()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    eqState.bands.forEach { band ->
-                        SealEqualizerNode(
-                            label = band.label,
-                            frequencyHz = band.centerFreqHz,
-                            currentLevelMb = band.currentLevelMb,
-                            minLevelMb = eqState.minLevelMb,
-                            maxLevelMb = eqState.maxLevelMb,
-                            onLevelChanged = { newLevel ->
-                                onBandLevelChanged(band.index, newLevel)
-                            }
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-        }
-    }
-}
-`,
-
-  'ui/components/ParchmentTagEditorScreen.kt': `package com.yourapp.musicplayer.ui.components
+  'ui/components/ParchmentTagEditorScreen.kt': `package com.shinobi.musicplayer.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -2169,18 +1806,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// Parchment Color Palette (Ink & Scroll aesthetics)
-private val ParchmentBackground = Color(0xFFF7F2E7)
+private val ParchmentBg = Color(0xFFF7F2E7)
 private val ParchmentSurface = Color(0xFFEFE6D2)
-private val ScrollBorderColor = Color(0xFF8C6D46)
-private val ScrollRollerColor = Color(0xFF593E25)
-private val InkTextColor = Color(0xFF2C221E)
+private val ScrollBorder = Color(0xFF8C6D46)
+private val ScrollWood = Color(0xFF593E25)
+private val InkText = Color(0xFF2C221E)
 
 @Composable
 fun ParchmentTagEditorScreen(
@@ -2214,48 +1849,39 @@ fun ParchmentTagEditorScreen(
                     .fillMaxWidth(0.9f)
                     .wrapContentHeight()
                     .clip(RoundedCornerShape(8.dp))
-                    .border(2.dp, ScrollBorderColor, RoundedCornerShape(8.dp))
-                    .background(ParchmentBackground)
+                    .border(2.dp, ScrollWood, RoundedCornerShape(8.dp))
+                    .background(ParchmentBg)
                     .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // --- Top Scroll Roller (Wooden Handle) ---
                 Box(
                     modifier = Modifier
                         .fillMaxWidth(0.7f)
-                        .height(14.dp)
-                        .clip(RoundedCornerShape(7.dp))
-                        .background(ScrollRollerColor)
+                        .height(12.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(ScrollWood)
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Scroll Title Header
                 Text(
-                    text = "SCEAU DE METADONNÉES",
+                    text = "ROULEAU DE MÉTADONNÉES",
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,
-                        letterSpacing = 2.sp,
-                        color = InkTextColor
+                        letterSpacing = 1.5.sp,
+                        color = InkText
                     )
                 )
 
-                Text(
-                    text = "Ajustement des inscriptions du rouleau",
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        color = ScrollBorderColor
-                    )
-                )
+                Spacer(modifier = Modifier.height(14.dp))
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // --- Calligraphic Ink Input Fields ---
                 ParchmentTextField(label = "Titre (Title)", value = title, onValueChange = { title = it })
                 Spacer(modifier = Modifier.height(8.dp))
                 ParchmentTextField(label = "Artiste (Artist)", value = artist, onValueChange = { artist = it })
                 Spacer(modifier = Modifier.height(8.dp))
                 ParchmentTextField(label = "Album", value = album, onValueChange = { album = it })
                 Spacer(modifier = Modifier.height(8.dp))
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -2268,16 +1894,15 @@ fun ParchmentTagEditorScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-                // --- Action Seals (Buttons) ---
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     Button(
                         onClick = onDismiss,
-                        colors = ButtonDefaults.buttonColors(containerColor = ScrollBorderColor)
+                        colors = ButtonDefaults.buttonColors(containerColor = ScrollBorder)
                     ) {
                         Icon(Icons.Default.Close, contentDescription = "Annuler", tint = Color.White)
                         Spacer(modifier = Modifier.width(4.dp))
@@ -2286,7 +1911,7 @@ fun ParchmentTagEditorScreen(
 
                     Button(
                         onClick = { onSave(title, artist, album, year, genre) },
-                        colors = ButtonDefaults.buttonColors(containerColor = ScrollRollerColor)
+                        colors = ButtonDefaults.buttonColors(containerColor = ScrollWood)
                     ) {
                         Icon(Icons.Default.Check, contentDescription = "Enregistrer", tint = Color.White)
                         Spacer(modifier = Modifier.width(4.dp))
@@ -2296,13 +1921,12 @@ fun ParchmentTagEditorScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // --- Bottom Scroll Roller (Wooden Handle) ---
                 Box(
                     modifier = Modifier
                         .fillMaxWidth(0.7f)
-                        .height(14.dp)
-                        .clip(RoundedCornerShape(7.dp))
-                        .background(ScrollRollerColor)
+                        .height(12.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(ScrollWood)
                 )
             }
         }
@@ -2318,183 +1942,20 @@ fun ParchmentTextField(
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        label = { Text(label, color = ScrollBorderColor) },
+        label = { Text(label, color = ScrollBorder) },
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(4.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedContainerColor = ParchmentSurface,
             unfocusedContainerColor = ParchmentSurface,
-            focusedBorderColor = ScrollBorderColor,
-            unfocusedBorderColor = ScrollBorderColor.copy(alpha = 0.6f),
-            focusedTextColor = InkTextColor,
-            unfocusedTextColor = InkTextColor
+            focusedBorderColor = ScrollBorder,
+            unfocusedBorderColor = ScrollBorder.copy(alpha = 0.6f),
+            focusedTextColor = InkText,
+            unfocusedTextColor = InkText
         ),
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
         singleLine = true
     )
 }
 `,
-
-  'ui/TagEditorSheet.kt': `package com.yourapp.musicplayer.ui
-
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
-import com.yourapp.musicplayer.model.Song
-import com.yourapp.musicplayer.util.SongFormatUtils
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun TagEditorSheet(
-    song: Song,
-    onDismiss: () -> Unit,
-    onSave: (
-        title: String,
-        artist: String,
-        album: String,
-        year: String,
-        genre: String,
-        albumArtBytes: ByteArray?
-    ) -> Unit
-) {
-    val context = LocalContext.current
-    var title by remember(song.id) { mutableStateOf(song.title) }
-    var artist by remember(song.id) { mutableStateOf(song.artist) }
-    var album by remember(song.id) { mutableStateOf(song.album) }
-    var year by remember(song.id) { mutableStateOf(song.year) }
-    var genre by remember(song.id) { mutableStateOf(song.genre) }
-    var selectedImageByteArray by remember(song.id) { mutableStateOf<ByteArray?>(null) }
-
-    val artworkPicker = rememberLauncherForActivityResult(
-        ActivityResultContracts.PickVisualMedia()
-    ) { uri ->
-        if (uri != null) {
-            selectedImageByteArray = context.contentResolver
-                .openInputStream(uri)
-                ?.use { it.readBytes() }
-        }
-    }
-
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                text = "Edit Embedded Tags",
-                style = MaterialTheme.typography.titleLarge
-            )
-            Text(
-                text = "\${song.mimeType} · \${song.bitrate} · \${song.sampleRate} · \${SongFormatUtils.formatFileSize(song.fileSizeBytes)} · \${SongFormatUtils.formatDuration(song.durationMs)}",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            OutlinedButton(
-                onClick = {
-                    artworkPicker.launch(
-                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                    )
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    if (selectedImageByteArray != null) {
-                        "Cover Art Selected (\${selectedImageByteArray?.size ?: 0} bytes)"
-                    } else {
-                        "Choose Embedded Album Art (Optional)"
-                    }
-                )
-            }
-
-            OutlinedTextField(
-                value = title,
-                onValueChange = { title = it },
-                label = { Text("Title") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-            OutlinedTextField(
-                value = artist,
-                onValueChange = { artist = it },
-                label = { Text("Artist") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-            OutlinedTextField(
-                value = album,
-                onValueChange = { album = it },
-                label = { Text("Album") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = year,
-                    onValueChange = { year = it },
-                    label = { Text("Year") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f)
-                )
-                OutlinedTextField(
-                    value = genre,
-                    onValueChange = { genre = it },
-                    label = { Text("Genre") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp, bottom = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                OutlinedButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Cancel")
-                }
-                Button(
-                    onClick = {
-                        onSave(title, artist, album, year, genre, selectedImageByteArray)
-                    },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Save Tags")
-                }
-            }
-        }
-    }
-}
-`,
-
 };

@@ -33,7 +33,8 @@ export default function App() {
   const [eqEnabled, setEqEnabled] = useState(true);
   const [eqBands, setEqBands] = useState<EqBand[]>(DEFAULT_EQ_BANDS);
   const [activePreset, setActivePreset] = useState<EqPresetId>('Flat');
-  const [bassBoostStrength, setBassBoostStrength] = useState(0);
+  const [bassBoostStrength, setBassBoostStrength] = useState(600);
+  const [spatialAudioStrength, setSpatialAudioStrength] = useState(450);
 
   const engineRef = useRef<WebAudioPlayerEngine | null>(null);
   if (!engineRef.current) {
@@ -98,7 +99,6 @@ export default function App() {
     setCurrentTime(0);
   }, [tracks, currentTrack, currentTime, engine]);
 
-  // Manage active audio playback when track or play state changes
   useEffect(() => {
     if (!currentTrack || !isPlaying) {
       engine.stopAll();
@@ -123,7 +123,6 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTrack?.id, currentTrack?.fileUrl, isPlaying]);
 
-  // Progress timer for built-in synth tracks
   useEffect(() => {
     if (!isPlaying || !currentTrack || currentTrack.fileUrl) return;
     const timer = window.setInterval(() => {
@@ -138,7 +137,6 @@ export default function App() {
     return () => window.clearInterval(timer);
   }, [isPlaying, currentTrack, handleNext]);
 
-  // Cleanup engine on unmount
   useEffect(() => {
     return () => {
       engine.stopAll();
@@ -199,15 +197,22 @@ export default function App() {
     engine.setBassBoostStrength(strength);
   };
 
+  const handleSpatialAudioChange = (strength: number) => {
+    setSpatialAudioStrength(strength);
+    engine.setSpatialAudioStrength(strength);
+  };
+
   const handleResetEq = () => {
     handleSelectPreset('Flat');
     handleBassBoostChange(0);
+    handleSpatialAudioChange(0);
   };
 
   const handleUploadFiles = async (fileList: FileList) => {
-    const files = Array.from(fileList).filter((f) =>
-      f.type.startsWith('audio/') ||
-      /\.(mp3|flac|wav|ogg|m4a|aac|opus)$/i.test(f.name),
+    const files = Array.from(fileList).filter(
+      (f) =>
+        f.type.startsWith('audio/') ||
+        /\.(mp3|flac|wav|ogg|m4a|aac|opus)$/i.test(f.name),
     );
     if (files.length === 0) return;
 
@@ -237,17 +242,17 @@ export default function App() {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
+    <div className="min-h-screen flex flex-col bg-[#121418] text-slate-100">
       {/* Top Bar: 3-Zone Contract */}
-      <header className="sticky top-0 z-30 h-14 bg-slate-50/90 backdrop-blur-md border-b border-slate-200">
+      <header className="sticky top-0 z-30 h-14 bg-[#121418]/90 backdrop-blur-md border-b border-[#242934]">
         <div className="max-w-7xl mx-auto h-full px-4 sm:px-6 flex items-center justify-between gap-8">
           {/* Zone 1: Brand Wordmark */}
           <button
             type="button"
             onClick={() => setActiveTab('player')}
-            className="font-display text-base font-semibold tracking-tight text-slate-900 whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 rounded-sm"
+            className="font-display text-base font-semibold tracking-tight text-white whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF5722] rounded-sm"
           >
-            Empty Activity
+            Shinobi Music Player
           </button>
 
           {/* Zone 2: Single-Line Navigation Links */}
@@ -259,10 +264,10 @@ export default function App() {
                   key={item.id}
                   type="button"
                   onClick={() => setActiveTab(item.id)}
-                  className={`py-1 text-sm font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 rounded-sm ${
+                  className={`py-1 text-sm font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF5722] rounded-sm ${
                     isActive
-                      ? 'text-slate-900 underline underline-offset-8 decoration-2 decoration-teal-700'
-                      : 'text-slate-600 hover:text-slate-900'
+                      ? 'text-white underline underline-offset-8 decoration-2 decoration-[#FF5722]'
+                      : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   {item.label}
@@ -289,7 +294,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => headerFileInputRef.current?.click()}
-              className="inline-flex items-center gap-1.5 min-h-[38px] px-4 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-medium hover:bg-slate-800 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 focus-visible:ring-offset-2"
+              className="inline-flex items-center gap-1.5 min-h-[38px] px-4 py-1.5 rounded-lg bg-[#D84315] text-white text-xs font-medium hover:bg-[#E64A19] transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF5722] focus-visible:ring-offset-2 focus-visible:ring-offset-[#121418]"
             >
               <Upload className="w-3.5 h-3.5" aria-hidden="true" />
               <span>Open Audio Files</span>
@@ -298,10 +303,10 @@ export default function App() {
         </div>
       </header>
 
-      {/* Mobile Navigation Strip (non-sticky to preserve viewport) */}
+      {/* Mobile Navigation Strip */}
       <nav
         aria-label="Mobile navigation"
-        className="md:hidden border-b border-slate-200 bg-white overflow-x-auto"
+        className="md:hidden border-b border-[#242934] bg-[#171A21] overflow-x-auto"
       >
         <div className="max-w-7xl mx-auto px-4 flex items-center gap-5">
           {navItems.map((item) => {
@@ -313,8 +318,8 @@ export default function App() {
                 onClick={() => setActiveTab(item.id)}
                 className={`min-h-[44px] text-sm font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer border-b-2 ${
                   isActive
-                    ? 'border-teal-700 text-slate-900'
-                    : 'border-transparent text-slate-600 hover:text-slate-900'
+                    ? 'border-[#FF5722] text-white'
+                    : 'border-transparent text-slate-400 hover:text-white'
                 }`}
               >
                 {item.label}
@@ -369,10 +374,12 @@ export default function App() {
             eqEnabled={eqEnabled}
             activePreset={activePreset}
             bassBoostStrength={bassBoostStrength}
+            spatialAudioStrength={spatialAudioStrength}
             onToggleEq={handleToggleEq}
             onSelectPreset={handleSelectPreset}
             onBandChange={handleBandChange}
             onBassBoostChange={handleBassBoostChange}
+            onSpatialAudioChange={handleSpatialAudioChange}
             onReset={handleResetEq}
           />
         )}
@@ -381,11 +388,11 @@ export default function App() {
       </main>
 
       {/* Quiet Footer */}
-      <footer className="border-t border-slate-200 py-6 mt-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
-          <span>Empty Activity · Jetpack Compose Audio &amp; Tag Studio</span>
+      <footer className="border-t border-[#242934] py-6 mt-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-400">
+          <span>Shinobi Music Player · com.shinobi.musicplayer</span>
           <span className="font-mono">
-            Media3 1.11.1 · JAudioTagger 3.0.1 · Coil 2.7.0
+            Media3 ExoPlayer · JAudioTagger 3.0.1 · Coil Compose
           </span>
         </div>
       </footer>
