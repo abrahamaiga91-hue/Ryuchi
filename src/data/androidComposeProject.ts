@@ -39,6 +39,33 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
 `,
 
+  '.gitignore': `*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/app/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+`,
+
+  'README.md': `# Music Player (Jetpack Compose + Media3)
+
+Offline Android music player built with **Jetpack Compose**, **Media3 ExoPlayer**, **JAudioTagger**, and custom Seal & Parchment DSP/Metadata UI components.
+
+## GitHub Actions CI Build
+
+Pushing to \`main\` or \`master\` (or triggering **Actions -> Android CI Build**) automatically builds \`app-debug.apk\` using JDK 17 and Gradle 8.11.1, and publishes it as a workflow artifact (\`music-player-debug-apk\`).
+`,
+
   'settings.gradle.kts': `pluginManagement {
     repositories {
         google {
@@ -646,12 +673,12 @@ class AudioEffectsController(context: Context) {
 
             val savedBass = prefs.getInt("bass_strength", 0).toShort()
             if (bass.strengthSupported) {
-                bass.setStrength(savedBass.coerceIn(0, 2000))
+                bass.setStrength(savedBass.coerceIn(0.toShort(), 2000.toShort()))
             }
 
             val savedSpatial = prefs.getInt("spatial_strength", 0).toShort()
             if (virt.strengthSupported) {
-                virt.setStrength(savedSpatial.coerceIn(0, 1000))
+                virt.setStrength(savedSpatial.coerceIn(0.toShort(), 1000.toShort()))
             }
 
             _uiState.value = EqualizerUiState(
@@ -692,7 +719,7 @@ class AudioEffectsController(context: Context) {
 
     fun setBassBoost(strength: Short) {
         val bass = bassBoost ?: return
-        val clamped = strength.coerceIn(0, 2000)
+        val clamped = strength.coerceIn(0.toShort(), 2000.toShort())
         if (bass.strengthSupported) {
             bass.setStrength(clamped)
         }
@@ -702,7 +729,7 @@ class AudioEffectsController(context: Context) {
 
     fun setSpatialAudio(strength: Short) {
         val virt = virtualizer ?: return
-        val clamped = strength.coerceIn(0, 1000)
+        val clamped = strength.coerceIn(0.toShort(), 1000.toShort())
         if (virt.strengthSupported) {
             virt.setStrength(clamped)
         }

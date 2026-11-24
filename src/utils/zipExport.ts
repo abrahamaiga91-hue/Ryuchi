@@ -4,6 +4,8 @@ import { AndroidFileId } from '../types/music';
 function resolveRepoPath(fileId: AndroidFileId): string {
   switch (fileId) {
     case '.github/workflows/android-build.yml':
+    case '.gitignore':
+    case 'README.md':
     case 'settings.gradle.kts':
     case 'build.gradle.kts':
     case 'gradle/libs.versions.toml':

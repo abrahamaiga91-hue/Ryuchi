@@ -6,6 +6,8 @@ import { buildAndroidProjectZipBlob } from '../utils/zipExport';
 
 const FILE_ORDER: AndroidFileId[] = [
   '.github/workflows/android-build.yml',
+  '.gitignore',
+  'README.md',
   'settings.gradle.kts',
   'build.gradle.kts',
   'gradle/libs.versions.toml',
